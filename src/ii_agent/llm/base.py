@@ -1,5 +1,3 @@
-"""LLM client for Anthropic models."""
-
 from abc import ABC, abstractmethod
 import json
 from dataclasses import dataclass
