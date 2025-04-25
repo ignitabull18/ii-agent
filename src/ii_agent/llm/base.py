@@ -15,6 +15,13 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 @dataclass
+class ToolCallParameters:
+    tool_call_id: str
+    tool_name: str
+    tool_input: Any
+
+
+@dataclass
 class ToolParam(DataClassJsonMixin):
     """Internal representation of LLM tool."""
 
