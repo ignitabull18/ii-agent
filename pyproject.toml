@@ -1,13 +1,27 @@
 [project]
 name = "ii-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Intelligent Agent platform providing CLI and WebSocket interfaces"
 readme = "README.md"
 authors = [
     { name = "khongtrunght", email = "khongtrunght@gmail.com" }
 ]
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "anthropic[vertex]>=0.50.0",
+    "dataclasses-json>=0.6.7",
+    "fastapi>=0.115.12",
+    "google-cloud-aiplatform>=1.90.0",
+    "jsonschema>=4.23.0",
+    "openai>=1.76.0",
+    "pexpect>=4.9.0",
+    "prompt-toolkit>=3.0.51",
+    "pytest>=8.3.5",
+    "python-dotenv>=1.1.0",
+    "rich>=14.0.0",
+    "termcolor>=3.0.1",
+    "uvicorn[standard]>=0.34.2",
+]
 
 [build-system]
 requires = ["hatchling"]

@@ -246,9 +246,6 @@ class AnthropicDirectClient(LLMClient):
                     # Sleep 12-18 seconds with jitter to avoid thundering herd.
                     time.sleep(15 * random.uniform(0.8, 1.2))
             except Exception as e:
-                print(f"Error in Anthropic request: {e}")
-                with open("anthropic_error.json", "a") as f:
-                    json.dump(anthropic_messages, f)
                 raise e
 
         # Convert messages back to internal format
