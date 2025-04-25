@@ -1,0 +1,14 @@
+[project]
+name = "ii-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "khongtrunght", email = "khongtrunght@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
