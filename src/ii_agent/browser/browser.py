@@ -32,14 +32,14 @@ from tenacity import (
 from typing_extensions import TypedDict  # to account for older python versions
 
 # Import detector class
-from index.browser.detector import Detector
-from index.browser.models import (
+from ii_agent.browser.detector import Detector
+from ii_agent.browser.models import (
 	BrowserError,
 	BrowserState,
 	InteractiveElementsData,
 	TabInfo,
 )
-from index.browser.utils import (
+from ii_agent.browser.utils import (
 	filter_elements,
 	put_highlight_elements_on_screenshot,
 	scale_b64_image,

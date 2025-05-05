@@ -6,7 +6,7 @@ from typing import List
 
 from PIL import Image, ImageDraw, ImageFont
 
-from index.browser.models import InteractiveElement, Rect
+from ii_agent.browser.models import InteractiveElement, Rect
 
 logger = logging.getLogger(__name__)
 
