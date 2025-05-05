@@ -12,7 +12,7 @@ class Detector(ABC):
     """Abstract interface for object detection in browser screenshots."""
 
     @abstractmethod
-    async def detect_from_image(self, image_b64: str, scale_factor: float, detect_sheets: bool = False) -> List[InteractiveElement]:
+    def detect_from_image(self, image_b64: str, scale_factor: float, detect_sheets: bool = False) -> List[InteractiveElement]:
         """
         Detect interactive elements from a base64 encoded image.
         
