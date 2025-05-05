@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from importlib import resources
 from typing import Any, Optional
 
-from lmnr import observe
 from PIL import Image
 from playwright.async_api import (
 	Browser as PlaywrightBrowser,
@@ -343,13 +342,11 @@ class Browser:
 		"""Get the current browser state"""
 		return self._state
 
-	@observe(name='browser.update_state', ignore_output=True)
 	async def update_state(self) -> BrowserState:
 		"""Update the browser state with current page information and return it"""
 		self._state = await self._update_state()
 		return self._state
 
-	@observe(name='browser._update_state', ignore_output=True)
 	async def _update_state(self) -> BrowserState:
 		"""Update and return state."""
 		@retry(
@@ -397,7 +394,6 @@ class Browser:
 				return self._state
 			raise
 	
-	@observe(name='browser.detect_browser_elements')
 	async def detect_browser_elements(self) -> InteractiveElementsData:
 		"""Get all interactive elements on the page"""
 		page = await self.get_current_page()	
@@ -406,7 +402,6 @@ class Browser:
 
 		return interactive_elements_data
 
-	@observe(name='browser.get_interactive_elements', ignore_output=True)
 	async def get_interactive_elements(self, screenshot_b64: str, detect_sheets: bool = False) -> InteractiveElementsData:
 		"""
 		Get interactive elements using combined browser and CV detection.
@@ -452,7 +447,6 @@ class Browser:
 			
 		return self._cdp_session
 
-	@observe(name='browser.take_screenshot', ignore_output=True)
 	async def fast_screenshot(self) -> str:
 		"""
 		Returns a base64 encoded screenshot of the current page.
