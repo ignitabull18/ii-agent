@@ -91,12 +91,10 @@ def main():
         docker_container_id=args.docker_container_id,
     )
 
-    history = InMemoryHistory()
     # Main interaction loop
     try:
         while True:
-            user_input = prompt("User input: ", history=history)
-            history.append_string(user_input)
+            user_input = input("User input: ")
 
             # Check for exit commands
             if user_input.lower() in ["exit", "quit"]:

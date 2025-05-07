@@ -33,6 +33,9 @@ from ii_agent.tools.browser_tool import (
     BrowserGetSelectOptionsTool,
     BrowserSelectDropdownOptionTool,
 )
+
+from ii_agent.tools.advanced_tools.audio_tool import AudioTranscribeTool, AudioGenerateTool
+from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
 from ii_agent.tools.base import DialogMessages, ToolImplOutput
 from ii_agent.utils import WorkspaceManager
 from ii_agent.browser.browser import Browser
@@ -152,6 +155,14 @@ try breaking down the task into smaller steps. After call this tool to update or
             BrowserPressKeyTool(browser=self.browser),
             BrowserGetSelectOptionsTool(browser=self.browser),
             BrowserSelectDropdownOptionTool(browser=self.browser),
+            
+            # audio tools
+            AudioTranscribeTool(workspace_manager=workspace_manager),
+            AudioGenerateTool(workspace_manager=workspace_manager),
+            
+            # pdf tools
+            PdfTextExtractTool(workspace_manager=workspace_manager),
+            
         ]
         self.websocket = websocket
 
