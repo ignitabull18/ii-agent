@@ -146,7 +146,7 @@ try breaking down the task into smaller steps. After call this tool to update or
             BrowserRestartTool(browser=self.browser),
             BrowserScrollDownTool(browser=self.browser),
             BrowserScrollUpTool(browser=self.browser),
-            BrowserViewTool(browser=self.browser),
+            BrowserViewTool(browser=self.browser, message_queue=self.message_queue),
             BrowserWaitTool(browser=self.browser),
             BrowserSwitchTabTool(browser=self.browser),
             BrowserOpenNewTabTool(browser=self.browser),
