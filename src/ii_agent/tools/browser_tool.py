@@ -8,9 +8,10 @@ from ii_agent.tools.base import (
 from playwright.sync_api import TimeoutError
 from ii_agent.browser.browser import Browser
 from ii_agent.browser.utils import is_pdf_url
-from typing import Any, Optional
-import os
+from ii_agent.core.event import RealtimeEvent
 from ii_agent.tools.utils import save_base64_image_png
+from asyncio import Queue
+from typing import Any, Optional
 
 
 class BrowserNavigationTool(LLMTool):
@@ -101,8 +102,9 @@ class BrowserViewTool(LLMTool):
     description = "View content of the current browser page. Use for checking the latest state of previously opened pages."
     input_schema = {"type": "object", "properties": {}, "required": []}
 
-    def __init__(self, browser: Browser):
+    def __init__(self, browser: Browser, message_queue: Queue | None = None):
         self.browser = browser
+        self.message_queue = message_queue
 
     def run_impl(
         self,
@@ -110,6 +112,18 @@ class BrowserViewTool(LLMTool):
         dialog_messages: Optional[DialogMessages] = None,
     ) -> ToolImplOutput:
         state = self.browser.update_state()
+
+        if self.message_queue:
+            self.message_queue.put_nowait(
+                RealtimeEvent(
+                    type="browser_use",
+                    raw_message={
+                        "url": state.url,
+                        "screenshot": state.screenshot,
+                        "screenshot_with_highlights": state.screenshot_with_highlights,
+                    }
+                )
+            )
 
         highlighted_elements = "<highlighted_elements>\n"
         if state.interactive_elements:
