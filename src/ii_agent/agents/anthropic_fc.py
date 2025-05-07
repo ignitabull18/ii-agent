@@ -18,9 +18,24 @@ from ii_agent.tools import (
     FileWriteTool,
     StaticDeployTool,
 )
+from ii_agent.tools.browser_tool import (
+    BrowserNavigationTool,
+    BrowserRestartTool,
+    BrowserScrollDownTool,
+    BrowserScrollUpTool,
+    BrowserViewTool,
+    BrowserWaitTool,
+    BrowserSwitchTabTool,
+    BrowserOpenNewTabTool,
+    BrowserClickTool,
+    BrowserEnterTextTool,
+    BrowserPressKeyTool,
+    BrowserGetSelectOptionsTool,
+    BrowserSelectDropdownOptionTool,
+)
 from ii_agent.tools.base import DialogMessages, ToolImplOutput
 from ii_agent.utils import WorkspaceManager
-
+from ii_agent.browser.browser import Browser
 
 class AnthropicFC(BaseAgent):
     name = "general_agent"
@@ -106,6 +121,9 @@ try breaking down the task into smaller steps. After call this tool to update or
         # Start file server
         self.file_server_port = file_server_port
 
+        self.browser = Browser()
+        self.browser._init_browser()
+
         # Initialize tools with file server port
         self.tools = [
             bash_tool,
@@ -113,13 +131,27 @@ try breaking down the task into smaller steps. After call this tool to update or
             SequentialThinkingTool(),
             TavilySearchTool(),
             TavilyVisitWebpageTool(),
-            # BrowserUse(message_queue=self.message_queue),
             self.complete_tool,
             FileWriteTool(),
             StaticDeployTool(
                 workspace_manager=workspace_manager,
                 file_server_port=self.file_server_port,
             ),
+
+            # Browser tools
+            BrowserNavigationTool(browser=self.browser),
+            BrowserRestartTool(browser=self.browser),
+            BrowserScrollDownTool(browser=self.browser),
+            BrowserScrollUpTool(browser=self.browser),
+            BrowserViewTool(browser=self.browser),
+            BrowserWaitTool(browser=self.browser),
+            BrowserSwitchTabTool(browser=self.browser),
+            BrowserOpenNewTabTool(browser=self.browser),
+            BrowserClickTool(browser=self.browser),
+            BrowserEnterTextTool(browser=self.browser),
+            BrowserPressKeyTool(browser=self.browser),
+            BrowserGetSelectOptionsTool(browser=self.browser),
+            BrowserSelectDropdownOptionTool(browser=self.browser),
         ]
         self.websocket = websocket
 
@@ -252,7 +284,11 @@ try breaking down the task into smaller steps. After call this tool to update or
                     )
 
                     log_message = f"Calling tool {tool_call.tool_name} with input:\n{tool_input_str}"
-                    log_message += f"\nTool output: \n{result}\n\n"
+                    if type(result) == str:
+                        log_message += f"\nTool output: \n{result}\n\n"
+                    else:
+                        log_message += f"\nTool output: \n{result[0]}\n\n"
+
                     self.logger_for_agent_logs.info(log_message)
 
                     # Handle both ToolResult objects and tuples

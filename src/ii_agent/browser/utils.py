@@ -1,9 +1,10 @@
 import base64
 import logging
+import requests
 from io import BytesIO
 from pathlib import Path
 from typing import List
-
+from urllib.parse import urlparse
 from PIL import Image, ImageDraw, ImageFont
 
 from ii_agent.browser.models import InteractiveElement, Rect
@@ -380,3 +381,36 @@ def filter_elements(
     sorted_elements = sort_elements_by_position(filtered)
     
     return sorted_elements
+
+
+def is_pdf_url(url: str, timeout: float = 5.0) -> bool:
+    """
+    Checks if a given URL points to a PDF file.
+
+    Args:
+        url (str): The URL to check.
+        timeout (float): Timeout for HTTP requests.
+
+    Returns:
+        bool: True if the URL points to a PDF, False otherwise.
+    """
+    try:
+        # Quick extension check
+        parsed = urlparse(url)
+        if parsed.path.lower().endswith(".pdf"):
+            return True
+
+        # Try HEAD request to get Content-Type
+        head = requests.head(url, allow_redirects=True, timeout=timeout)
+        content_type = head.headers.get("Content-Type", "").lower()
+        if "application/pdf" in content_type:
+            return True
+
+        # Fallback: Try a minimal GET request
+        get = requests.get(url, stream=True, timeout=timeout)
+        content_type = get.headers.get("Content-Type", "").lower()
+        return "application/pdf" in content_type
+
+    except requests.RequestException as e:
+        # Log or handle as needed in real prod code
+        return False

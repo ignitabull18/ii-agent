@@ -46,7 +46,7 @@ from ii_agent.browser.utils import (
 
 logger = logging.getLogger(__name__)
 
-INTERACTIVE_ELEMENTS_JS_CODE = resources.read_text('index.browser', 'findVisibleInteractiveElements.js')
+INTERACTIVE_ELEMENTS_JS_CODE = resources.read_text('src.ii_agent.browser', 'findVisibleInteractiveElements.js')
 
 class ViewportSize(TypedDict):
 	width: int
@@ -72,7 +72,7 @@ class BrowserConfig:
 
 	"""
 	cdp_url: Optional[str] = None
-	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1024, "height": 768})
+	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1200, "height": 800})
 	storage_state: Optional[StorageState] = None
 	detector: Optional[Detector] = None
 
@@ -275,6 +275,11 @@ class Browser:
 			self._state = None
 			self.playwright_browser = None
 			self.playwright = None
+
+	def restart(self):
+		"""Restart the browser"""
+		self.close()
+		self._init_browser()
 	
 	def goto(self, url: str):
 		"""Navigate to a URL"""
