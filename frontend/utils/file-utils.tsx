@@ -1,4 +1,4 @@
-import { FileText, File, Sheet, Presentation } from "lucide-react";
+import { FileText, File, Sheet, Presentation, AudioLines } from "lucide-react";
 import React from "react";
 
 export interface FileIconInfo {
@@ -46,6 +46,16 @@ export const getFileIconAndColor = (fileName: string): FileIconInfo => {
       IconComponent = File;
       bgColor = "bg-purple-500";
       label = "Image";
+      break;
+    case "mp3":
+    case "wav":
+    case "ogg":
+    case "flac":
+    case "m4a":
+    case "aac":
+      IconComponent = AudioLines;
+      bgColor = "bg-blue-600";
+      label = "Audio";
       break;
     default:
       // Use default values
