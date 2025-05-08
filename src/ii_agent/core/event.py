@@ -3,7 +3,7 @@ from typing import Literal, Any, Dict
 
 
 class RealtimeEvent(BaseModel):
-    type: Literal["make_response", "tool_call", "tool_result"]
+    type: Literal["make_response", "tool_call", "tool_result", "browser_use"]
     content: dict[str, Any]
 
 
