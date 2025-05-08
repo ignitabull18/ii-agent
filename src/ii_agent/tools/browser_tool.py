@@ -1,16 +1,14 @@
-import json
-import time
 import asyncio
+import json
 from ii_agent.tools.base import (
-    DialogMessages,
     LLMTool,
     ToolImplOutput,
 )
+from ii_agent.llm.message_history import MessageHistory
 from playwright.sync_api import TimeoutError
 from ii_agent.browser.browser import Browser
 from ii_agent.browser.utils import is_pdf_url
-from ii_agent.core.event import RealtimeEvent
-from ii_agent.tools.utils import save_base64_image_png
+from ii_agent.core.event import EventType, RealtimeEvent
 from asyncio import Queue
 from typing import Any, Optional
 
@@ -46,7 +44,7 @@ class BrowserNavigationTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         url = tool_input["url"]
 
@@ -67,7 +65,6 @@ class BrowserNavigationTool(LLMTool):
                 await asyncio.sleep(1.5)
             msg = f"Navigated to {url}"
             return ToolImplOutput(msg, msg)
-        
 
         loop = get_event_loop()
         return loop.run_until_complete(_run())
@@ -93,7 +90,7 @@ class BrowserRestartTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             url = tool_input["url"]
@@ -130,7 +127,7 @@ class BrowserViewTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             state = await self.browser.update_state()
@@ -138,12 +135,12 @@ class BrowserViewTool(LLMTool):
             if self.message_queue:
                 self.message_queue.put_nowait(
                     RealtimeEvent(
-                        type="browser_use",
+                        type=EventType.BROWSER_USE,
                         content={
                             "url": state.url,
                             "screenshot": state.screenshot,
                             "screenshot_with_highlights": state.screenshot_with_highlights,
-                        }
+                        },
                     )
                 )
 
@@ -200,7 +197,7 @@ class BrowserWaitTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             await asyncio.sleep(1)
@@ -229,7 +226,7 @@ class BrowserScrollDownTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             page = await self.browser.get_current_page()
@@ -239,16 +236,21 @@ class BrowserScrollDownTool(LLMTool):
                 await page.keyboard.press("PageDown")
                 await asyncio.sleep(0.1)
             else:
-                await page.mouse.move(state.viewport.width / 2, state.viewport.height / 2)
+                await page.mouse.move(
+                    state.viewport.width / 2, state.viewport.height / 2
+                )
                 await asyncio.sleep(0.1)
                 await page.mouse.wheel(0, state.viewport.height * 0.8)
                 await asyncio.sleep(0.1)
 
             tool_output = "Scrolled page down"
-            return ToolImplOutput(tool_output=tool_output, tool_result_message=tool_output)
-        
+            return ToolImplOutput(
+                tool_output=tool_output, tool_result_message=tool_output
+            )
+
         loop = get_event_loop()
         return loop.run_until_complete(_run())
+
 
 class BrowserScrollUpTool(LLMTool):
     name = "browser_scroll_up"
@@ -261,7 +263,7 @@ class BrowserScrollUpTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             page = await self.browser.get_current_page()
@@ -271,14 +273,18 @@ class BrowserScrollUpTool(LLMTool):
                 await page.keyboard.press("PageUp")
                 await asyncio.sleep(0.1)
             else:
-                await page.mouse.move(state.viewport.width / 2, state.viewport.height / 2)
+                await page.mouse.move(
+                    state.viewport.width / 2, state.viewport.height / 2
+                )
                 await asyncio.sleep(0.1)
                 await page.mouse.wheel(0, -state.viewport.height * 0.8)
                 await asyncio.sleep(0.1)
 
             tool_output = "Scrolled page up"
-            return ToolImplOutput(tool_output=tool_output, tool_result_message=tool_output)
-        
+            return ToolImplOutput(
+                tool_output=tool_output, tool_result_message=tool_output
+            )
+
         loop = get_event_loop()
         return loop.run_until_complete(_run())
 
@@ -305,7 +311,7 @@ class BrowserClickTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             index = int(tool_input["index"])
@@ -316,7 +322,9 @@ class BrowserClickTool(LLMTool):
                     tool_result_message=f"Element with index {index} does not exist - retry or use alternative tool.",
                 )
             element = state.interactive_elements[index]
-            initial_pages = len(self.browser.context.pages) if self.browser.context else 0
+            initial_pages = (
+                len(self.browser.context.pages) if self.browser.context else 0
+            )
 
             page = await self.browser.get_current_page()
             await page.mouse.click(element.center.x, element.center.y)
@@ -355,7 +363,7 @@ class BrowserEnterTextTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             text = tool_input["text"]
@@ -402,7 +410,7 @@ class BrowserPressKeyTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             key = tool_input["key"]
@@ -437,7 +445,7 @@ class BrowserGetSelectOptionsTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             index = int(tool_input["index"])
@@ -489,7 +497,7 @@ class BrowserGetSelectOptionsTool(LLMTool):
             formatted_options = []
             for opt in options_data["options"]:
                 encoded_text = json.dumps(opt["text"])
-                formatted_options.append(f'{opt["index"]}: option={encoded_text}')
+                formatted_options.append(f"{opt['index']}: option={encoded_text}")
 
             msg = "\n".join(formatted_options)
             msg += "\nIf you decide to use this select element, use the exact option name in select_dropdown_option"
@@ -498,6 +506,7 @@ class BrowserGetSelectOptionsTool(LLMTool):
 
         loop = get_event_loop()
         return loop.run_until_complete(_run())
+
 
 class BrowserSelectDropdownOptionTool(LLMTool):
     name = "browser_select_dropdown_option"
@@ -523,7 +532,7 @@ class BrowserSelectDropdownOptionTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             index = int(tool_input["index"])
@@ -626,7 +635,9 @@ class BrowserSelectDropdownOptionTool(LLMTool):
                     available = result.get("availableOptions", [])
                     error_msg += f". Available options: {', '.join(available)}"
 
-                return ToolImplOutput(tool_output=error_msg, tool_result_message=error_msg)
+                return ToolImplOutput(
+                    tool_output=error_msg, tool_result_message=error_msg
+                )
 
         loop = get_event_loop()
         return loop.run_until_complete(_run())
@@ -652,7 +663,7 @@ class BrowserSwitchTabTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
             index = int(tool_input["index"])
@@ -660,7 +671,7 @@ class BrowserSwitchTabTool(LLMTool):
             await asyncio.sleep(0.5)
             msg = f"Switched to tab {index}"
             return ToolImplOutput(tool_output=msg, tool_result_message=msg)
-        
+
         loop = get_event_loop()
         return loop.run_until_complete(_run())
 
@@ -676,13 +687,13 @@ class BrowserOpenNewTabTool(LLMTool):
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
-        async def _run():   
+        async def _run():
             await self.browser.create_new_tab()
             await asyncio.sleep(0.5)
             msg = "Opened a new tab"
             return ToolImplOutput(tool_output=msg, tool_result_message=msg)
-        
+
         loop = get_event_loop()
         return loop.run_until_complete(_run())

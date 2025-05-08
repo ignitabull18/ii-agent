@@ -4,8 +4,10 @@ import logging
 from typing import Any, Optional
 from fastapi import WebSocket
 from ii_agent.agents.base import BaseAgent
-from ii_agent.core.event import RealtimeEvent
+from ii_agent.core.event import EventType, RealtimeEvent
 from ii_agent.llm.base import LLMClient, TextResult
+from ii_agent.llm.context_manager.base import ContextManager
+from ii_agent.llm.message_history import MessageHistory
 from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
 from ii_agent.tools import (
     CompleteTool,
@@ -15,9 +17,9 @@ from ii_agent.tools import (
     SequentialThinkingTool,
     TavilySearchTool,
     TavilyVisitWebpageTool,
-    FileWriteTool,
     StaticDeployTool,
 )
+from ii_agent.tools.base import ToolImplOutput, LLMTool
 from ii_agent.tools.browser_tool import (
     BrowserNavigationTool,
     BrowserRestartTool,
@@ -34,11 +36,14 @@ from ii_agent.tools.browser_tool import (
     BrowserSelectDropdownOptionTool,
 )
 
-from ii_agent.tools.advanced_tools.audio_tool import AudioTranscribeTool, AudioGenerateTool
+from ii_agent.tools.advanced_tools.audio_tool import (
+    AudioTranscribeTool,
+    AudioGenerateTool,
+)
 from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
-from ii_agent.tools.base import DialogMessages, ToolImplOutput
 from ii_agent.utils import WorkspaceManager
 from ii_agent.browser.browser import Browser
+
 
 class AnthropicFC(BaseAgent):
     name = "general_agent"
@@ -75,21 +80,25 @@ try breaking down the task into smaller steps. After call this tool to update or
         client: LLMClient,
         workspace_manager: WorkspaceManager,
         logger_for_agent_logs: logging.Logger,
+        context_manager: ContextManager,
         max_output_tokens_per_turn: int = 8192,
         max_turns: int = 10,
-        use_prompt_budgeting: bool = True,
         ask_user_permission: bool = False,
         docker_container_id: Optional[str] = None,
         websocket: Optional[WebSocket] = None,
-        file_server_port: int = 8088,
     ):
         """Initialize the agent.
 
         Args:
             client: The LLM client to use
+            workspace_manager: Workspace manager for taking snapshots
+            logger_for_agent_logs: Logger for agent logs
+            context_manager: Context manager for managing conversation context
             max_output_tokens_per_turn: Maximum tokens per turn
             max_turns: Maximum number of turns
-            workspace_manager: Optional workspace manager for taking snapshots
+            ask_user_permission: Whether to ask for permission before executing commands
+            docker_container_id: Optional Docker container ID to run commands in
+            websocket: Optional WebSocket for real-time communication
         """
         super().__init__()
         self.client = client
@@ -98,10 +107,8 @@ try breaking down the task into smaller steps. After call this tool to update or
         self.max_turns = max_turns
         self.workspace_manager = workspace_manager
         self.interrupted = False
-        self.dialog = DialogMessages(
-            logger_for_agent_logs=logger_for_agent_logs,
-            use_prompt_budgeting=use_prompt_budgeting,
-        )
+        self.history = MessageHistory()
+        self.context_manager = context_manager
 
         # Create and store the complete tool
         self.complete_tool = CompleteTool()
@@ -121,13 +128,9 @@ try breaking down the task into smaller steps. After call this tool to update or
             )
 
         self.message_queue = asyncio.Queue()
-        # Start file server
-        self.file_server_port = file_server_port
 
         self.browser = Browser()
-        self.browser._init_browser()
 
-        # Initialize tools with file server port
         self.tools = [
             bash_tool,
             StrReplaceEditorTool(workspace_manager=workspace_manager),
@@ -135,12 +138,7 @@ try breaking down the task into smaller steps. After call this tool to update or
             TavilySearchTool(),
             TavilyVisitWebpageTool(),
             self.complete_tool,
-            FileWriteTool(),
-            StaticDeployTool(
-                workspace_manager=workspace_manager,
-                file_server_port=self.file_server_port,
-            ),
-
+            StaticDeployTool(workspace_manager=workspace_manager),
             # Browser tools
             BrowserNavigationTool(browser=self.browser),
             BrowserRestartTool(browser=self.browser),
@@ -155,14 +153,11 @@ try breaking down the task into smaller steps. After call this tool to update or
             BrowserPressKeyTool(browser=self.browser),
             BrowserGetSelectOptionsTool(browser=self.browser),
             BrowserSelectDropdownOptionTool(browser=self.browser),
-            
             # audio tools
             AudioTranscribeTool(workspace_manager=workspace_manager),
             AudioGenerateTool(workspace_manager=workspace_manager),
-            
             # pdf tools
             PdfTextExtractTool(workspace_manager=workspace_manager),
-            
         ]
         self.websocket = websocket
 
@@ -173,11 +168,9 @@ try breaking down the task into smaller steps. After call this tool to update or
         try:
             while True:
                 try:
-                    message = await self.message_queue.get()
+                    message: RealtimeEvent = await self.message_queue.get()
 
-                    await self.websocket.send_json(
-                        {"type": message.type, "content": message.content}
-                    )
+                    await self.websocket.send_json(message.model_dump())
 
                     self.message_queue.task_done()
                 except asyncio.CancelledError:
@@ -198,7 +191,7 @@ try breaking down the task into smaller steps. After call this tool to update or
     def run_impl(
         self,
         tool_input: dict[str, Any],
-        dialog_messages: Optional[DialogMessages] = None,
+        message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         instruction = tool_input["instruction"]
 
@@ -206,7 +199,7 @@ try breaking down the task into smaller steps. After call this tool to update or
         self.logger_for_agent_logs.info(f"\n{user_input_delimiter}\n")
 
         # Add instruction to dialog before getting mode
-        self.dialog.add_user_prompt(instruction)
+        self.history.add_user_prompt(instruction)
         self.interrupted = False
 
         remaining_turns = self.max_turns
@@ -215,12 +208,6 @@ try breaking down the task into smaller steps. After call this tool to update or
 
             delimiter = "-" * 45 + " NEW TURN " + "-" * 45
             self.logger_for_agent_logs.info(f"\n{delimiter}\n")
-
-            if self.dialog.use_prompt_budgeting:
-                current_tok_count = self.dialog.count_tokens()
-                self.logger_for_agent_logs.info(
-                    f"(Current token count: {current_tok_count})\n"
-                )
 
             # Get tool parameters for available tools
             tool_params = [tool.get_tool_param() for tool in self.tools]
@@ -233,22 +220,39 @@ try breaking down the task into smaller steps. After call this tool to update or
                     raise ValueError(f"Tool {sorted_names[i]} is duplicated")
 
             try:
+                current_messages = self.history.get_messages_for_llm()
+                current_tok_count = self.context_manager.count_tokens(current_messages)
+                self.logger_for_agent_logs.info(
+                    f"(Current token count: {current_tok_count})\n"
+                )
+
+                truncated_messages_for_llm = (
+                    self.context_manager.apply_truncation_if_needed(current_messages)
+                )
+
+                # NOTE:
+                # If truncation happened, the `history` object itself was modified.
+                # We need to update the message list in the `history` object to use the truncated version.
+                self.history.set_message_list(truncated_messages_for_llm)
+
                 model_response, _ = self.client.generate(
-                    messages=self.dialog.get_messages_for_llm_client(),
+                    messages=truncated_messages_for_llm,
                     max_tokens=self.max_output_tokens,
                     tools=tool_params,
                     system_prompt=self._get_system_prompt(),
                 )
-                self.dialog.add_model_response(model_response)
+
+                # Add the raw response to the canonical history
+                self.history.add_assistant_turn(model_response)
 
                 # Handle tool calls
-                pending_tool_calls = self.dialog.get_pending_tool_calls()
+                pending_tool_calls = self.history.get_pending_tool_calls()
 
                 if len(pending_tool_calls) == 0:
                     # No tools were called, so assume the task is complete
                     self.logger_for_agent_logs.info("[no tools were called]")
                     return ToolImplOutput(
-                        tool_output=self.dialog.get_last_model_text_response(),
+                        tool_output=self.history.get_last_assistant_text_response(),
                         tool_result_message="Task completed",
                     )
 
@@ -257,12 +261,11 @@ try breaking down the task into smaller steps. After call this tool to update or
 
                 assert len(pending_tool_calls) == 1
 
-                # ToolCallParameters(tool_call_id='toolu_vrtx_01YV2bk3haVVECPECN4AWCTz', tool_name='bash', tool_input={'command': 'ls -la /home/pvduy/phu/ii-agent/workspace'})
                 tool_call = pending_tool_calls[0]
 
                 self.message_queue.put_nowait(
                     RealtimeEvent(
-                        type="tool_call",
+                        type=EventType.TOOL_CALL,
                         content={
                             "tool_call_id": tool_call.tool_call_id,
                             "tool_name": tool_call.tool_name,
@@ -281,21 +284,23 @@ try breaking down the task into smaller steps. After call this tool to update or
                     )
 
                 try:
-                    tool = next(t for t in self.tools if t.name == tool_call.tool_name)
+                    tool: LLMTool = next(
+                        t for t in self.tools if t.name == tool_call.tool_name
+                    )
                 except StopIteration as exc:
                     raise ValueError(
                         f"Tool with name {tool_call.tool_name} not found"
                     ) from exc
 
                 try:
-                    result = tool.run(tool_call.tool_input, deepcopy(self.dialog))
+                    result = tool.run(tool_call.tool_input, deepcopy(self.history))
 
                     tool_input_str = "\n".join(
                         [f" - {k}: {v}" for k, v in tool_call.tool_input.items()]
                     )
 
                     log_message = f"Calling tool {tool_call.tool_name} with input:\n{tool_input_str}"
-                    if type(result) == str:
+                    if isinstance(result, str):
                         log_message += f"\nTool output: \n{result}\n\n"
                     else:
                         log_message += f"\nTool output: \n{result[0]}\n\n"
@@ -308,14 +313,13 @@ try breaking down the task into smaller steps. After call this tool to update or
                     else:
                         tool_result = result
 
-                    self.dialog.add_tool_call_result(tool_call, tool_result)
+                    self.history.add_tool_call_result(tool_call, tool_result)
 
                     self.message_queue.put_nowait(
                         RealtimeEvent(
-                            type="tool_result",
+                            type=EventType.TOOL_RESULT,
                             content={
                                 "tool_call_id": tool_call.tool_call_id,
-                                # "tool_result": tool_result,
                                 "tool_name": tool_call.tool_name,
                                 "result": tool_result,
                             },
@@ -324,7 +328,7 @@ try breaking down the task into smaller steps. After call this tool to update or
                     if self.complete_tool.should_stop:
                         # Add a fake model response, so the next turn is the user's
                         # turn in case they want to resume
-                        self.dialog.add_model_response(
+                        self.history.add_assistant_turn(
                             [TextResult(text="Completed the task.")]
                         )
                         return ToolImplOutput(
@@ -335,8 +339,8 @@ try breaking down the task into smaller steps. After call this tool to update or
                     # Handle interruption during tool execution
                     self.interrupted = True
                     interrupt_message = "Tool execution was interrupted by user."
-                    self.dialog.add_tool_call_result(tool_call, interrupt_message)
-                    self.dialog.add_model_response(
+                    self.history.add_tool_call_result(tool_call, interrupt_message)
+                    self.history.add_assistant_turn(
                         [
                             TextResult(
                                 text="Tool execution interrupted by user. You can resume by providing a new instruction."
@@ -351,7 +355,7 @@ try breaking down the task into smaller steps. After call this tool to update or
             except KeyboardInterrupt:
                 # Handle interruption during model generation or other operations
                 self.interrupted = True
-                self.dialog.add_model_response(
+                self.history.add_assistant_turn(
                     [
                         TextResult(
                             text="Agent interrupted by user. You can resume by providing a new instruction."
@@ -389,9 +393,9 @@ try breaking down the task into smaller steps. After call this tool to update or
         """
         self.complete_tool.reset()
         if resume:
-            assert self.dialog.is_user_turn()
+            assert self.history.is_next_turn_user()
         else:
-            self.dialog.clear()
+            self.history.clear()
             self.interrupted = False
 
         tool_input = {
@@ -399,11 +403,11 @@ try breaking down the task into smaller steps. After call this tool to update or
         }
         if orientation_instruction:
             tool_input["orientation_instruction"] = orientation_instruction
-        return self.run(tool_input, self.dialog)
+        return self.run(tool_input, self.history)
 
     def clear(self):
         """Clear the dialog and reset interruption state.
         Note: This does NOT clear the file manager, preserving file context.
         """
-        self.dialog.clear()
+        self.history.clear()
         self.interrupted = False

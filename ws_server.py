@@ -6,12 +6,12 @@ This script provides a WebSocket interface for interacting with the Agent,
 allowing real-time communication with a frontend application.
 """
 
-
 import os
 import argparse
 import asyncio
 import json
 import logging
+import uuid
 from pathlib import Path
 from typing import Dict, Set
 
@@ -28,6 +28,10 @@ from ii_agent.llm import get_client
 from dotenv import load_dotenv
 
 from fastapi.staticfiles import StaticFiles
+
+from ii_agent.llm.context_manager.file_based import FileBasedContextManager
+from ii_agent.llm.context_manager.standard import StandardContextManager
+from ii_agent.llm.token_counter import TokenCounter
 
 load_dotenv()
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
@@ -286,17 +290,42 @@ def create_agent_for_connection(websocket: WebSocket):
         region=global_args.region,
     )
 
-    # Initialize workspace manager
+    # Create unique subdirectory for this connection
+    connection_id = str(uuid.uuid4())
     workspace_path = Path(global_args.workspace).resolve()
+    connection_workspace = workspace_path / connection_id
+    connection_workspace.mkdir(parents=True, exist_ok=True)
+
+    # Initialize workspace manager with connection-specific subdirectory
     workspace_manager = WorkspaceManager(
-        root=workspace_path, container_workspace=global_args.use_container_workspace
+        root=connection_workspace,
+        container_workspace=global_args.use_container_workspace,
     )
+
+    # Initialize token counter
+    token_counter = TokenCounter()
+
+    # Create context manager based on argument
+    if global_args.context_manager == "file-based":
+        context_manager = FileBasedContextManager(
+            workspace_dir=connection_workspace,
+            token_counter=token_counter,
+            logger=logger_for_agent_logs,
+            token_budget=120_000,
+        )
+    else:  # standard
+        context_manager = StandardContextManager(
+            token_counter=token_counter,
+            logger=logger_for_agent_logs,
+            token_budget=120_000,
+        )
 
     # Initialize agent with websocket
     agent = AnthropicFC(
         client=client,
         workspace_manager=workspace_manager,
         logger_for_agent_logs=logger_for_agent_logs,
+        context_manager=context_manager,
         max_output_tokens_per_turn=MAX_OUTPUT_TOKENS_PER_TURN,
         max_turns=MAX_TURNS,
         ask_user_permission=global_args.needs_permission,
