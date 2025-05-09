@@ -41,6 +41,8 @@ from ii_agent.tools.advanced_tools.audio_tool import (
     AudioTranscribeTool,
     AudioGenerateTool,
 )
+from ii_agent.tools.advanced_tools.video_gen_tool import VideoGenerateFromTextTool
+from ii_agent.tools.advanced_tools.image_gen_tool import ImageGenerateTool
 from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
 from ii_agent.utils import WorkspaceManager
 from ii_agent.browser.browser import Browser
@@ -159,6 +161,9 @@ try breaking down the task into smaller steps. After call this tool to update or
             AudioGenerateTool(workspace_manager=workspace_manager),
             # pdf tools
             PdfTextExtractTool(workspace_manager=workspace_manager),
+            # image tools
+            ImageGenerateTool(workspace_manager=workspace_manager),
+            VideoGenerateFromTextTool(workspace_manager=workspace_manager),
         ]
         self.websocket = websocket
 
