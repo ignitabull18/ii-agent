@@ -8,6 +8,11 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cloneDeep, debounce } from "lodash";
 import dynamic from "next/dynamic";
+import { Orbitron } from "next/font/google";
+
+const orbitron = Orbitron({
+  subsets: ["latin"],
+});
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -489,7 +494,7 @@ export default function Home() {
   }, [messages?.length]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-850">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#191E1B]">
       {!isInChatView && (
         <Image
           src="/logo-only.png"
@@ -508,7 +513,7 @@ export default function Home() {
         <motion.h1
           className={`font-semibold text-center ${
             isInChatView ? "flex items-center gap-x-2 text-2xl" : "text-4xl"
-          }`}
+          } ${orbitron.className}`}
           layout
           layoutId="page-title"
         >
@@ -580,8 +585,9 @@ export default function Home() {
                           {message.files.map((fileName, fileIndex) => {
                             // Check if the file is an image
                             const isImage =
-                              fileName.match(/\.(jpeg|jpg|gif|png|webp)$/i) !==
-                              null;
+                              fileName.match(
+                                /\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i
+                              ) !== null;
 
                             if (
                               isImage &&
