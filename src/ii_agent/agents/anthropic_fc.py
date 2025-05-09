@@ -42,6 +42,8 @@ from ii_agent.tools.advanced_tools.audio_tool import (
     AudioGenerateTool,
 )
 from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
+from ii_agent.tools.text_inspector_tool import TextInspectorTool
+from ii_agent.tools.visualizer import VisualizerTool
 from ii_agent.utils import WorkspaceManager
 from ii_agent.browser.browser import Browser
 
@@ -158,7 +160,11 @@ try breaking down the task into smaller steps. After call this tool to update or
             AudioTranscribeTool(workspace_manager=workspace_manager),
             AudioGenerateTool(workspace_manager=workspace_manager),
             # pdf tools
-            PdfTextExtractTool(workspace_manager=workspace_manager),
+            # PdfTextExtractTool(workspace_manager=workspace_manager),
+            # text inspector tool
+            TextInspectorTool(workspace_manager=workspace_manager),
+            # visualizer tool
+            VisualizerTool(workspace_manager=workspace_manager),
         ]
         self.websocket = websocket
 
@@ -304,7 +310,20 @@ try breaking down the task into smaller steps. After call this tool to update or
                     if isinstance(result, str):
                         log_message += f"\nTool output: \n{result}\n\n"
                     else:
-                        log_message += f"\nTool output: \n{result[0]}\n\n"
+                        # Handle image data in tool output more gracefully
+                        if isinstance(result, list):
+                            output_str = ""
+                            for item in result:
+                                if isinstance(item, dict):
+                                    if item.get("type") == "image":
+                                        output_str += "[Image data truncated for logging]\n"
+                                    else:
+                                        output_str += str(item) + "\n"
+                                else:
+                                    output_str += str(item) + "\n"
+                            log_message += f"\nTool output: \n{output_str}\n\n"
+                        else:
+                            log_message += f"\nTool output: \n{result[0]}\n\n"
 
                     self.logger_for_agent_logs.info(log_message)
 

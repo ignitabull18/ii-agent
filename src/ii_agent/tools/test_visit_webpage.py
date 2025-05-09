@@ -7,8 +7,8 @@ class TestVisitWebpageTool(unittest.TestCase):
     def setUp(self):
         self.tool = VisitWebpageTool(max_output_length=1000)
 
-    @patch("tools.visit_webpage.requests.get")
-    @patch("tools.visit_webpage.markdownify")
+    @patch("ii_agent.tools.visit_webpage.requests.get")
+    @patch("ii_agent.tools.visit_webpage.markdownify")
     def test_successful_webpage_visit(self, mock_markdownify, mock_get):
         # Setup mock response
         mock_response = MagicMock()
@@ -33,7 +33,7 @@ class TestVisitWebpageTool(unittest.TestCase):
             "<html><body><h1>Test Page</h1><p>Test content</p></body></html>"
         )
 
-    @patch("tools.visit_webpage.requests.get")
+    @patch("ii_agent.tools.visit_webpage.requests.get")
     def test_timeout_error(self, mock_get):
         # Setup mock to raise a timeout exception
         mock_get.side_effect = TimeoutError("Request timed out")
@@ -46,7 +46,7 @@ class TestVisitWebpageTool(unittest.TestCase):
             result, "The request timed out. Please try again later or check the URL."
         )
 
-    @patch("tools.visit_webpage.requests.get")
+    @patch("ii_agent.tools.visit_webpage.requests.get")
     def test_request_exception(self, mock_get):
         # Setup mock to raise a request exception
         mock_get.side_effect = Exception("Connection error")
@@ -57,7 +57,7 @@ class TestVisitWebpageTool(unittest.TestCase):
         # Verify the result
         self.assertEqual(result, "An unexpected error occurred: Connection error")
 
-    @patch("tools.visit_webpage.requests.get")
+    @patch("ii_agent.tools.visit_webpage.requests.get")
     def test_http_error(self, mock_get):
         # Setup mock to raise an HTTP error
         mock_response = MagicMock()
@@ -70,7 +70,7 @@ class TestVisitWebpageTool(unittest.TestCase):
         # Verify the result
         self.assertEqual(result, "Error fetching the webpage: 404 Not Found")
 
-    @patch("tools.visit_webpage.importlib.import_module")
+    @patch("ii_agent.tools.visit_webpage.importlib.import_module")
     def test_missing_dependencies(self, mock_import):
         # Setup mock to raise an import error
         mock_import.side_effect = ImportError("No module named 'requests'")
@@ -85,8 +85,8 @@ class TestVisitWebpageTool(unittest.TestCase):
             str(context.exception),
         )
 
-    @patch("tools.visit_webpage.requests.get")
-    @patch("tools.visit_webpage.markdownify")
+    @patch("ii_agent.tools.visit_webpage.requests.get")
+    @patch("ii_agent.tools.visit_webpage.markdownify")
     def test_content_truncation(self, mock_markdownify, mock_get):
         # Setup mock response
         mock_response = MagicMock()
