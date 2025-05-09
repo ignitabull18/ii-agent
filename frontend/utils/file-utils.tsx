@@ -43,6 +43,10 @@ export const getFileIconAndColor = (fileName: string): FileIconInfo => {
     case "jpeg":
     case "png":
     case "gif":
+    case "bmp":
+    case "webp":
+    case "heic":
+    case "svg":
       IconComponent = File;
       bgColor = "bg-purple-500";
       label = "Image";

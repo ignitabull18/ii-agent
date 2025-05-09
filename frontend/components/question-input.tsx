@@ -49,7 +49,9 @@ const QuestionInput = ({
 
   const isImageFile = (fileName: string): boolean => {
     const ext = fileName.split(".").pop()?.toLowerCase() || "";
-    return ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext);
+    return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "svg"].includes(
+      ext
+    );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,7 +117,7 @@ const QuestionInput = ({
         transition={{ delay: 0.1 }}
       >
         {files.length > 0 && (
-          <div className="absolute top-4 left-4 right-2 flex flex-wrap gap-2 z-10">
+          <div className="absolute top-4 left-4 right-2 flex items-center overflow-auto gap-2 z-10">
             {files.map((file) => {
               if (file.isImage && file.preview) {
                 return (
@@ -154,7 +156,7 @@ const QuestionInput = ({
                   <div
                     className={`flex items-center justify-center w-10 h-10 ${bgColor} rounded-full`}
                   >
-                    {file.loading ? (
+                    {isUploading ? (
                       <Loader2 className="size-5 text-white animate-spin" />
                     ) : (
                       <IconComponent className="size-5 text-white" />
