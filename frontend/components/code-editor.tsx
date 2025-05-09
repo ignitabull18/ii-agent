@@ -170,13 +170,17 @@ const CodeEditor = ({
 
   useEffect(() => {
     (async () => {
-      if (activeFile) {
+      if (activeFile && workspaceInfo) {
         setActiveLanguage(getFileLanguage(activeFile));
-        const content = await loadFileContent(activeFile);
+        const content = await loadFileContent(
+          activeFile.startsWith(workspaceInfo)
+            ? activeFile
+            : `${workspaceInfo}/${activeFile}`
+        );
         setFileContent(content);
       }
     })();
-  }, [activeFile]);
+  }, [activeFile, workspaceInfo]);
 
   const renderFileTree = (items: FileStructure[]) => {
     // Sort items: folders first, then files, both in alphabetical order

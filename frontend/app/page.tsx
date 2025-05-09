@@ -883,7 +883,7 @@ export default function Home() {
                   }
                 />
                 <CodeEditor
-                  key={JSON.stringify(messages)}
+                  key={JSON.stringify(currentActionData)}
                   className={activeTab === TAB.CODE ? "" : "hidden"}
                   workspaceInfo={workspaceInfo}
                   activeFile={activeFileCodeEditor}
