@@ -65,6 +65,18 @@ def parse_args():
         default=1,
         help="Number of concurrent evaluation tasks",
     )
+    parser.add_argument(
+        "--start-index",
+        type=int,
+        default=0,
+        help="Starting index in the dataset (inclusive)",
+    )
+    parser.add_argument(
+        "--end-index",
+        type=int,
+        default=None,
+        help="Ending index in the dataset (exclusive). If not specified, runs until the end of dataset",
+    )
     
     return parser.parse_args()
 
@@ -432,6 +444,15 @@ def main():
     eval_ds = load_gaia_dataset(args.use_raw_dataset, args.set_to_run)
     print("Loaded evaluation dataset:")
     print(pd.DataFrame(eval_ds)["task"].value_counts())
+
+    # Slice dataset based on start and end indices
+    if args.end_index is None:
+        args.end_index = len(eval_ds)
+    if args.start_index < 0 or args.end_index > len(eval_ds) or args.start_index >= args.end_index:
+        raise ValueError(f"Invalid range: start_index={args.start_index}, end_index={args.end_index}, dataset_size={len(eval_ds)}")
+    
+    eval_ds = eval_ds.select(range(args.start_index, args.end_index))
+    print(f"Running evaluation on examples {args.start_index} to {args.end_index-1} (total: {len(eval_ds)} examples)")
 
     answers_file = f"output/{args.set_to_run}/{args.run_name}.jsonl"
     tasks_to_run = get_examples_to_answer(answers_file, eval_ds)
