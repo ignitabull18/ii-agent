@@ -89,7 +89,7 @@ def load_gaia_dataset(use_raw_dataset: bool, set_to_run: str) -> Dataset:
 
     def preprocess_file_paths(row):
         if len(row["file_name"]) > 0:
-            row["file_name"] = f"data/gaia/{set_to_run}/" + row["file_name"]
+            row["file_name"] = f"data/gaia/2023/{set_to_run}/" + row["file_name"]
         return row
 
     eval_ds = load_dataset(
@@ -126,7 +126,7 @@ def get_examples_to_answer(answers_file: str, eval_ds: Dataset) -> list[dict]:
         print("No usable records! ▶️ Starting new.")
         done_questions = []
     return [line for line in eval_ds.to_list() 
-            if line["question"] not in done_questions and line["file_name"]]
+            if line["question"] not in done_questions]
 
 def get_single_file_description(file_path: str, question: str, visual_inspection_tool, document_inspection_tool):
     file_extension = file_path.split(".")[-1]
@@ -286,6 +286,15 @@ def answer_single_question(
             # Copy the file to workspace
             dest_file = upload_dir / source_file.name
             shutil.copy2(source_file, dest_file)
+
+            #check if same file name but with png extension exists (replace source_file extension with png)
+            png_file = source_file.with_suffix(".png")
+            if png_file.exists():
+                #copy png file to workspace
+                dest_png_file = upload_dir / png_file.name
+                shutil.copy2(png_file, dest_png_file)
+                logger.info(f"Copied file {png_file} to {dest_png_file}")
+
             logger.info(f"Copied file {source_file} to {dest_file}")
             
             # Update file path in example to point to workspace
@@ -344,7 +353,7 @@ Run verification steps if that's needed, you must make sure you find the correct
         final_result = agent.run_agent(augmented_question, resume=True)
         
         output = str(final_result)
-        # intermediate_steps = [] #TODO: add this
+        intermediate_steps = [] #TODO: add this
         
         iteration_limit_exceeded = "Agent stopped due to iteration limit or time limit." in output
         raised_exception = False
@@ -416,8 +425,8 @@ def main():
     )
 
     # Initialize text inspection tools
-    visual_inspection_tool = ImageQATool(client, 100000)
-    document_inspection_tool = DocQATool(client, 100000)
+    visual_inspection_tool = ImageQATool(workspace_manager=None, client=client)
+    document_inspection_tool = DocQATool(workspace_manager=None, client=client, text_limit=100000)
 
     # Load dataset and get tasks to run
     eval_ds = load_gaia_dataset(args.use_raw_dataset, args.set_to_run)

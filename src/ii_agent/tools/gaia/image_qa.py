@@ -1,4 +1,5 @@
 import mimetypes
+from pathlib import Path
 from typing import Any, Optional
 
 from ii_agent.llm.message_history import MessageHistory
@@ -29,7 +30,9 @@ class ImageQATool(LLMTool):
         "required": ["image_path", "question"],
     }
 
-    def __init__(self, workspace_manager: WorkspaceManager, client: LLMClient):
+    def __init__(self, workspace_manager: WorkspaceManager | None, client: LLMClient):
+        if workspace_manager is None:
+            workspace_manager = WorkspaceManager(Path("."))
         self.workspace_manager = workspace_manager
         self.client = client
 
@@ -55,6 +58,7 @@ class ImageQATool(LLMTool):
 
         try:
             # Convert relative path to absolute path using workspace_manager
+            import ipdb; ipdb.set_trace()
             abs_path = str(self.workspace_manager.workspace_path(image_path))
             
             # Get mime type and encode image

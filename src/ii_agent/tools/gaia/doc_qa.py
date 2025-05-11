@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Optional
 
 from ii_agent.llm.message_history import MessageHistory
@@ -28,7 +29,9 @@ class DocQATool(LLMTool):
         "required": ["file_path", "question"],
     }
 
-    def __init__(self, workspace_manager: WorkspaceManager, client: LLMClient, text_limit: int = 100000):
+    def __init__(self, workspace_manager: WorkspaceManager | None, client: LLMClient, text_limit: int = 100000):
+        if workspace_manager is None:
+            workspace_manager = WorkspaceManager(Path("."))
         self.workspace_manager = workspace_manager
         self.client = client
         self.text_limit = text_limit
