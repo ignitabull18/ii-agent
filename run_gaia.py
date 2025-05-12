@@ -35,6 +35,9 @@ from ii_agent.tools.gaia.doc_qa import DocQATool
 # Global lock for thread-safe file appending
 append_answer_lock = Lock()
 
+BASE_LOG_DIR = "trace_logs"
+os.makedirs(BASE_LOG_DIR, exist_ok=True)
+
 def parse_args():
     """Parse command line arguments for GAIA evaluation."""
     parser = argparse.ArgumentParser(description="Run GAIA dataset evaluation")
@@ -283,6 +286,8 @@ def answer_single_question(
     """Process a single GAIA question using the agent."""
     # Create workspace using task_id
     task_id = example["task_id"]
+    task_log_dir = f"{BASE_LOG_DIR}/task_{task_id}"
+    os.makedirs(task_log_dir, exist_ok=True)
     workspace_path = Path("workspace") / task_id
     workspace_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Created workspace directory for task {task_id}: {workspace_path}")
@@ -362,7 +367,7 @@ Run verification steps if that's needed, you must make sure you find the correct
     start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
         # Run agent with question-specific workspace
-        final_result = agent.run_agent(augmented_question, resume=True)
+        final_result = agent.run_agent(augmented_question, resume=True, log_dir=task_log_dir)
         
         output = str(final_result)
         intermediate_steps = [] #TODO: add this
