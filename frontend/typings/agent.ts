@@ -46,6 +46,8 @@ export enum TOOL {
   BROWSER_OPEN_NEW_TAB = "browser_open_new_tab",
   AUDIO_TRANSCRIBE = "audio_transcribe",
   GENERATE_AUDIO_RESPONSE = "generate_audio_response",
+  VIDEO_GENERATE = "generate_video_from_text",
+  IMAGE_GENERATE = "generate_image_from_text",
 }
 
 export type ActionStep = {
@@ -64,6 +66,7 @@ export type ActionStep = {
       file?: string;
       instruction?: string;
       output_filename?: string;
+      key?: string;
     };
     result?: string | Record<string, unknown>;
     query?: string;
