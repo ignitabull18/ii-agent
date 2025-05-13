@@ -433,7 +433,6 @@ export default function Home() {
             case AgentEvent.FILE_EDIT:
               setMessages((prev) => {
                 const lastMessage = cloneDeep(prev[prev.length - 1]);
-                lastMessage.id = Date.now().toString();
                 if (
                   lastMessage.action &&
                   lastMessage.action.type === TOOL.STR_REPLACE_EDITOR
@@ -505,7 +504,6 @@ export default function Home() {
                       lastMessage.action &&
                       lastMessage.action?.type === data.content.tool_name
                     ) {
-                      lastMessage.id = Date.now().toString();
                       lastMessage.action.data.result = data.content.result;
                       lastMessage.action.data.isResult = true;
                       setTimeout(() => {
