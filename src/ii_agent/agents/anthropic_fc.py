@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 
 import logging
 from typing import Any, Optional, List
@@ -8,6 +9,7 @@ from ii_agent.core.event import EventType, RealtimeEvent
 from ii_agent.llm.base import LLMClient, TextResult
 from ii_agent.llm.context_manager.base import ContextManager
 from ii_agent.llm.message_history import MessageHistory
+from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import AgentToolManager
 from ii_agent.tools.base import ToolImplOutput
 from ii_agent.tools.base import LLMTool
@@ -44,6 +46,8 @@ try breaking down the task into smaller steps. After call this tool to update or
         max_output_tokens_per_turn: int = 8192,
         max_turns: int = 10,
         websocket: Optional[WebSocket] = None,
+        db_path: str = "events.db",
+        session_id: Optional[uuid.UUID] = None,
     ):
         """Initialize the agent.
 
@@ -57,6 +61,8 @@ try breaking down the task into smaller steps. After call this tool to update or
             max_output_tokens_per_turn: Maximum tokens per turn
             max_turns: Maximum number of turns
             websocket: Optional WebSocket for real-time communication
+            db_path: Path to the SQLite database file
+            session_id: UUID of the session this agent belongs to
         """
         super().__init__()
         self.system_prompt = system_prompt
@@ -73,19 +79,31 @@ try breaking down the task into smaller steps. After call this tool to update or
         self.interrupted = False
         self.history = MessageHistory()
         self.context_manager = context_manager
+        self.session_id = session_id
+
+        # Initialize database manager
+        self.db_manager = DatabaseManager(db_path=db_path)
+
         self.message_queue = message_queue
         self.websocket = websocket
 
     async def _process_messages(self):
-        if not self.websocket:
-            return
-
         try:
             while True:
                 try:
                     message: RealtimeEvent = await self.message_queue.get()
 
-                    await self.websocket.send_json(message.model_dump())
+                    # Save all events to database if we have a session
+                    if self.session_id is not None:
+                        self.db_manager.save_event(self.session_id, message)
+                    else:
+                        self.logger_for_agent_logs.info(
+                            f"No session ID, skipping event: {message}"
+                        )
+
+                    # Only send to websocket if this is not an event from the client
+                    if message.type != EventType.USER_MESSAGE and self.websocket:
+                        await self.websocket.send_json(message.model_dump())
 
                     self.message_queue.task_done()
                 except asyncio.CancelledError:
@@ -222,6 +240,12 @@ try breaking down the task into smaller steps. After call this tool to update or
                         self.history.add_assistant_turn(
                             [TextResult(text="Completed the task.")]
                         )
+                        self.message_queue.put_nowait(
+                            RealtimeEvent(
+                                type=EventType.AGENT_RESPONSE,
+                                content={"text": self.tool_manager.get_final_answer()},
+                            )
+                        )
                         return ToolImplOutput(
                             tool_output=self.tool_manager.get_final_answer(),
                             tool_result_message="Task completed",
@@ -238,6 +262,12 @@ try breaking down the task into smaller steps. After call this tool to update or
                             )
                         ]
                     )
+                    self.message_queue.put_nowait(
+                        RealtimeEvent(
+                            type=EventType.AGENT_RESPONSE,
+                            content={"text": interrupt_message},
+                        )
+                    )
                     return ToolImplOutput(
                         tool_output=interrupt_message,
                         tool_result_message=interrupt_message,
@@ -253,12 +283,21 @@ try breaking down the task into smaller steps. After call this tool to update or
                         )
                     ]
                 )
+                self.message_queue.put_nowait(
+                    RealtimeEvent(
+                        type=EventType.AGENT_RESPONSE,
+                        content={"text": "Agent interrupted by user"},
+                    )
+                )
                 return ToolImplOutput(
                     tool_output="Agent interrupted by user",
                     tool_result_message="Agent interrupted by user",
                 )
 
         agent_answer = "Agent did not complete after max turns"
+        self.message_queue.put_nowait(
+            RealtimeEvent(type=EventType.AGENT_RESPONSE, content={"text": agent_answer})
+        )
         return ToolImplOutput(
             tool_output=agent_answer, tool_result_message=agent_answer
         )
@@ -278,6 +317,7 @@ try breaking down the task into smaller steps. After call this tool to update or
             instruction: The instruction to the agent.
             resume: Whether to resume the agent from the previous state,
                 continuing the dialog.
+            orientation_instruction: Optional orientation instruction
 
         Returns:
             A tuple of (result, message).

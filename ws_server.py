@@ -16,14 +16,23 @@ from pathlib import Path
 from typing import Dict, Set, Any
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    WebSocketDisconnect,
+    Request,
+    HTTPException,
+)
+
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import anyio
 import base64
+from sqlalchemy import desc, asc, text
 
 from ii_agent.core.event import RealtimeEvent, EventType
-from utils import parse_common_args
+from ii_agent.db.models import Event, Session
+from utils import parse_common_args, create_workspace_manager_for_connection
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
 from ii_agent.utils import WorkspaceManager
@@ -35,6 +44,7 @@ from fastapi.staticfiles import StaticFiles
 from ii_agent.llm.context_manager.file_based import FileBasedContextManager
 from ii_agent.llm.context_manager.standard import StandardContextManager
 from ii_agent.llm.token_counter import TokenCounter
+from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
 from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
 
@@ -78,15 +88,20 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_connections.add(websocket)
 
-    workspace_manager = create_workspace_manager_for_connection()
+    workspace_manager, session_uuid = (
+        create_workspace_manager_for_connection(global_args.workspace, global_args.use_container_workspace)
+    ) 
     print(f"Workspace manager created: {workspace_manager}")
 
     try:
-        # Initial connection message
+        # Initial connection message with session info
         await websocket.send_json(
             RealtimeEvent(
                 type=EventType.CONNECTION_ESTABLISHED,
-                content={"message": "Connected to Agent WebSocket Server"},
+                content={
+                    "message": "Connected to Agent WebSocket Server",
+                    "workspace_path": str(workspace_manager.root),
+                },
             ).model_dump()
         )
 
@@ -103,7 +118,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Create a new agent for this connection
                     tool_args = content.get("tool_args", {})
                     agent = create_agent_for_connection(
-                        workspace_manager, websocket, tool_args
+                       session_uuid, workspace_manager, websocket, tool_args
                     )
                     active_agents[websocket] = agent
 
@@ -154,7 +169,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_json(
                             RealtimeEvent(
                                 type=EventType.WORKSPACE_INFO,
-                                content={"path": str(workspace_manager.root)},
+                                content={
+                                    "path": str(workspace_manager.root),
+                                },
                             ).model_dump()
                         )
                     else:
@@ -237,15 +254,13 @@ async def run_agent_async(websocket: WebSocket, user_input: str, resume: bool = 
         return
 
     try:
-        # Run the agent with the query
-        result = await anyio.to_thread.run_sync(agent.run_agent, user_input, resume)
-
-        # Send result back to client
-        await websocket.send_json(
-            RealtimeEvent(
-                type=EventType.AGENT_RESPONSE, content={"text": result}
-            ).model_dump()
+        # Add user message to the event queue to save to database
+        agent.message_queue.put_nowait(
+            RealtimeEvent(type=EventType.USER_MESSAGE, content={"text": user_input})
         )
+        # Run the agent with the query
+        await anyio.to_thread.run_sync(agent.run_agent, user_input, resume)
+
     except Exception as e:
         logger.error(f"Error running agent: {str(e)}")
         import traceback
@@ -262,22 +277,6 @@ async def run_agent_async(websocket: WebSocket, user_input: str, resume: bool = 
         if websocket in active_tasks:
             del active_tasks[websocket]
 
-
-def create_workspace_manager_for_connection():
-    """Create a new workspace manager instance for a websocket connection."""
-    # Create unique subdirectory for this connection
-    connection_id = str(uuid.uuid4())
-    workspace_path = Path(global_args.workspace).resolve()
-    connection_workspace = workspace_path / connection_id
-    connection_workspace.mkdir(parents=True, exist_ok=True)
-
-    # Initialize workspace manager with connection-specific subdirectory
-    workspace_manager = WorkspaceManager(
-        root=connection_workspace,
-        container_workspace=global_args.use_container_workspace,
-    )
-
-    return workspace_manager
 
 
 def cleanup_connection(websocket: WebSocket):
@@ -302,22 +301,32 @@ def cleanup_connection(websocket: WebSocket):
 
 
 def create_agent_for_connection(
+    session_id: uuid.UUID,
     workspace_manager: WorkspaceManager, websocket: WebSocket, tool_args: Dict[str, Any]
 ):
     """Create a new agent instance for a websocket connection."""
     global global_args
-
+    device_id = websocket.query_params.get("device_id")
     # Setup logging
     logger_for_agent_logs = logging.getLogger(f"agent_logs_{id(websocket)}")
     logger_for_agent_logs.setLevel(logging.DEBUG)
+    # Prevent propagation to root logger to avoid duplicate logs
+    logger_for_agent_logs.propagate = False
 
     # Ensure we don't duplicate handlers
     if not logger_for_agent_logs.handlers:
         logger_for_agent_logs.addHandler(logging.FileHandler(global_args.logs_path))
         if not global_args.minimize_stdout_logs:
             logger_for_agent_logs.addHandler(logging.StreamHandler())
-        else:
-            logger_for_agent_logs.propagate = False
+
+    # Initialize database manager
+    db_manager = DatabaseManager(base_workspace_dir=global_args.workspace)
+
+    # Create a new session and get its workspace directory
+    db_manager.create_session(device_id=device_id, session_uuid=session_id, workspace_path=workspace_manager.root)
+    logger_for_agent_logs.info(
+        f"Created new session {session_id} with workspace at {workspace_manager.root}"
+    )
 
     # Initialize LLM client
     client = get_client(
@@ -368,7 +377,12 @@ def create_agent_for_connection(
         max_output_tokens_per_turn=MAX_OUTPUT_TOKENS_PER_TURN,
         max_turns=MAX_TURNS,
         websocket=websocket,
+        db_path="events.db",  # Use the same database file
+        session_id=session_id,  # Pass the session_id from database manager
     )
+
+    # Store the session ID in the agent for event tracking
+    agent.session_id = session_id
 
     return agent
 
@@ -426,17 +440,17 @@ async def upload_file_endpoint(request: Request):
     """API endpoint for uploading a single file to the workspace.
 
     Expects a JSON payload with:
-    - connection_id: UUID of the connection/workspace
+    - session_id: UUID of the session/workspace
     - file: Object with path and content properties
     """
     try:
         data = await request.json()
-        connection_id = data.get("connection_id")
+        session_id = data.get("session_id")
         file_info = data.get("file")
 
-        if not connection_id:
+        if not session_id:
             return JSONResponse(
-                status_code=400, content={"error": "connection_id is required"}
+                status_code=400, content={"error": "session_id is required"}
             )
 
         if not file_info:
@@ -444,14 +458,12 @@ async def upload_file_endpoint(request: Request):
                 status_code=400, content={"error": "No file provided for upload"}
             )
 
-        # Find the workspace path for this connection
-        workspace_path = Path(global_args.workspace).resolve() / connection_id
+        # Find the workspace path for this session
+        workspace_path = Path(global_args.workspace).resolve() / session_id
         if not workspace_path.exists():
             return JSONResponse(
                 status_code=404,
-                content={
-                    "error": f"Workspace not found for connection: {connection_id}"
-                },
+                content={"error": f"Workspace not found for session: {session_id}"},
             )
 
         # Create the uploaded_files directory if it doesn't exist
@@ -524,6 +536,117 @@ async def upload_file_endpoint(request: Request):
         logger.error(f"Error uploading file: {str(e)}")
         return JSONResponse(
             status_code=500, content={"error": f"Error uploading file: {str(e)}"}
+        )
+
+
+@app.get("/api/sessions/{device_id}")
+async def get_sessions_by_device_id(device_id: str):
+    """Get all sessions for a specific device ID, sorted by creation time descending.
+    For each session, also includes the first user message if available.
+
+    Args:
+        device_id: The device identifier to look up sessions for
+
+    Returns:
+        A list of sessions with their details and first user message, sorted by creation time descending
+    """
+    try:
+        # Initialize database manager
+        db_manager = DatabaseManager(base_workspace_dir=global_args.workspace)
+
+        # Get all sessions for this device, sorted by created_at descending
+        with db_manager.get_session() as session:
+            # Use raw SQL query to get sessions with their first user message
+            query = text("""
+            SELECT 
+                session.id AS session_id,
+                session.*, 
+                event.id AS first_event_id,
+                event.event_payload AS first_message,
+                event.timestamp AS first_event_time
+            FROM session
+            LEFT JOIN event ON session.id = event.session_id
+            WHERE event.id IN (
+                SELECT e.id
+                FROM event e
+                WHERE e.event_type = "user_message" 
+                AND e.timestamp = (
+                    SELECT MIN(e2.timestamp)
+                    FROM event e2
+                    WHERE e2.session_id = e.session_id
+                    AND e2.event_type = "user_message"
+                )
+            )
+            AND session.device_id = :device_id
+            ORDER BY session.created_at DESC
+            """)
+            
+            # Execute the raw query with parameters
+            result = session.execute(query, {"device_id": device_id})
+            
+            # Convert result to a list of dictionaries
+            sessions = []
+            for row in result:
+                session_data = {
+                    "id": row.id,
+                    "workspace_dir": row.workspace_dir,
+                    "created_at": row.created_at,
+                    "device_id": row.device_id,
+                    "first_message": json.loads(row.first_message).get("content", {}).get("text", "") if row.first_message else ""
+                }
+                sessions.append(session_data)
+            
+            return {"sessions": sessions}
+
+    except Exception as e:
+        logger.error(f"Error retrieving sessions: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving sessions: {str(e)}"
+        )
+
+
+@app.get("/api/sessions/{session_id}/events")
+async def get_session_events(session_id: str):
+    """Get all events for a specific session ID, sorted by timestamp ascending.
+
+    Args:
+        session_id: The session identifier to look up events for
+
+    Returns:
+        A list of events with their details, sorted by timestamp ascending
+    """
+    try:
+        # Initialize database manager
+        db_manager = DatabaseManager(base_workspace_dir=global_args.workspace)
+
+        # Get all events for this session, sorted by timestamp ascending
+        with db_manager.get_session() as session:
+            events = (
+                session.query(Event)
+                .filter(Event.session_id == session_id)
+                .order_by(asc(Event.timestamp))
+                .all()
+            )
+
+            # Convert events to a list of dictionaries
+            event_list = []
+            for e in events:
+                event_list.append(
+                    {
+                        "id": e.id,
+                        "session_id": e.session_id,
+                        "timestamp": e.timestamp.isoformat(),
+                        "event_type": e.event_type,
+                        "event_payload": e.event_payload,
+                    }
+                )
+
+            return {"events": event_list}
+
+    except Exception as e:
+        logger.error(f"Error retrieving events: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving events: {str(e)}"
         )
 
 

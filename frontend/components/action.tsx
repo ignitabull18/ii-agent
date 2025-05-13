@@ -151,7 +151,7 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return "Opening New Tab";
 
       default:
-        break;
+        return type;
     }
   }, [type, value?.tool_input?.command]);
 

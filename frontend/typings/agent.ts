@@ -4,6 +4,7 @@ export type Source = {
 };
 
 export enum AgentEvent {
+  USER_MESSAGE = "user_message",
   CONNECTION_ESTABLISHED = "connection_established",
   WORKSPACE_INFO = "workspace_info",
   PROCESSING = "processing",
@@ -75,3 +76,21 @@ export type ActionStep = {
     path?: string;
   };
 };
+
+export interface ISession {
+  id: string;
+  workspace_dir: string;
+  created_at: string;
+  device_id: string;
+  first_message: string;
+}
+
+export interface IEvent {
+  id: string;
+  event_type: AgentEvent;
+  event_payload: {
+    type: AgentEvent;
+    content: Record<string, unknown>;
+  };
+  timestamp: string;
+}
