@@ -121,7 +121,7 @@ export default function Home() {
             for (let i = 0; i < data.events.length; i++) {
               const event = data.events[i];
               // Process each event with a 2-second delay
-              await new Promise((resolve) => setTimeout(resolve, 1000));
+              await new Promise((resolve) => setTimeout(resolve, 1500));
               handleEvent({ ...event.event_payload, id: event.id });
             }
           };
