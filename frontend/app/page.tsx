@@ -69,13 +69,13 @@ export default function Home() {
       setActiveFileCodeEditor("");
 
       switch (data.type) {
-        case TOOL.TAVILY_SEARCH:
+        case TOOL.WEB_SEARCH:
           setActiveTab(TAB.BROWSER);
           setCurrentActionData(data);
           break;
 
         case TOOL.BROWSER_USE:
-        case TOOL.TAVILY_VISIT:
+        case TOOL.VISIT:
           setActiveTab(TAB.BROWSER);
           setCurrentActionData(data);
           break;
@@ -896,7 +896,7 @@ export default function Home() {
                 <Browser
                   className={
                     activeTab === TAB.BROWSER &&
-                    (currentActionData?.type === TOOL.TAVILY_VISIT ||
+                    (currentActionData?.type === TOOL.VISIT ||
                       currentActionData?.type === TOOL.BROWSER_USE)
                       ? ""
                       : "hidden"
@@ -908,7 +908,7 @@ export default function Home() {
                       : undefined
                   }
                   raw={
-                    currentActionData?.type === TOOL.TAVILY_VISIT
+                    currentActionData?.type === TOOL.VISIT
                       ? parseJson(currentActionData?.data?.result as string)
                           ?.raw_content
                       : undefined
@@ -917,13 +917,13 @@ export default function Home() {
                 <SearchBrowser
                   className={
                     activeTab === TAB.BROWSER &&
-                    currentActionData?.type === TOOL.TAVILY_SEARCH
+                    currentActionData?.type === TOOL.WEB_SEARCH
                       ? ""
                       : "hidden"
                   }
                   keyword={currentActionData?.data.tool_input?.query}
                   search_results={
-                    currentActionData?.type === TOOL.TAVILY_SEARCH &&
+                    currentActionData?.type === TOOL.WEB_SEARCH &&
                     currentActionData?.data?.result
                       ? parseJson(currentActionData?.data?.result as string)
                       : undefined
