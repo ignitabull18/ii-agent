@@ -16,6 +16,7 @@ import {
   Rocket,
   RotateCcw,
   Search,
+  Sparkle,
   Terminal,
   Video,
 } from "lucide-react";
@@ -41,8 +42,6 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return <Globe className={className} />;
       case TOOL.BASH:
         return <Terminal className={className} />;
-      case TOOL.FILE_WRITE:
-        return <Code className={className} />;
       case TOOL.STR_REPLACE_EDITOR:
         return <Code className={className} />;
       case TOOL.STATIC_DEPLOY:
@@ -57,6 +56,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return <Video className={className} />;
       case TOOL.IMAGE_GENERATE:
         return <ImageIcon className={className} />;
+      case TOOL.DEEP_RESEARCH:
+        return <Sparkle className={className} />;
 
       case TOOL.BROWSER_WAIT:
         return <LoaderCircle className={className} />;
@@ -101,8 +102,6 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return "Browsing";
       case TOOL.BASH:
         return "Executing Command";
-      case TOOL.FILE_WRITE:
-        return "Creating File";
       case TOOL.STR_REPLACE_EDITOR:
         return value?.tool_input?.command === "create"
           ? "Creating File"
@@ -121,6 +120,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return "Generating Video";
       case TOOL.IMAGE_GENERATE:
         return "Generating Image";
+      case TOOL.DEEP_RESEARCH:
+        return "Deep Researching";
 
       case TOOL.BROWSER_WAIT:
         return "Waiting for Page to Load";
@@ -166,10 +167,6 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return value.tool_input?.url;
       case TOOL.BASH:
         return value.tool_input?.command;
-      case TOOL.FILE_WRITE:
-        return value.tool_input?.file === workspaceInfo
-          ? workspaceInfo
-          : value.tool_input?.file?.replace(workspaceInfo, "");
       case TOOL.STR_REPLACE_EDITOR:
         return value.tool_input?.path === workspaceInfo
           ? workspaceInfo
@@ -199,6 +196,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return value.tool_input?.output_filename === workspaceInfo
           ? workspaceInfo
           : value.tool_input?.output_filename?.replace(workspaceInfo, "");
+      case TOOL.DEEP_RESEARCH:
+        return value.tool_input?.query;
 
       case TOOL.BROWSER_WAIT:
         return value.tool_input?.url;
