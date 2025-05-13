@@ -638,6 +638,7 @@ async def get_session_events(session_id: str):
                         "timestamp": e.timestamp.isoformat(),
                         "event_type": e.event_type,
                         "event_payload": e.event_payload,
+                        "workspace_dir": e.session.workspace_dir,
                     }
                 )
 

@@ -93,4 +93,5 @@ export interface IEvent {
     content: Record<string, unknown>;
   };
   timestamp: string;
+  workspace_dir: string;
 }

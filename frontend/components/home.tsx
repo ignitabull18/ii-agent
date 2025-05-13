@@ -70,6 +70,7 @@ export default function Home() {
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isCompleted, setIsCompleted] = useState(false);
   const [workspaceInfo, setWorkspaceInfo] = useState("");
+  console.log("🚀 ~ Home ~ workspaceInfo:", workspaceInfo);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [codeEditorKey, setCodeEditorKey] = useState("code-editor");
@@ -77,6 +78,11 @@ export default function Home() {
   const [deviceId, setDeviceId] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
+  const [filesContent, setFilesContent] = useState<{ [key: string]: string }>(
+    {}
+  );
+
+  const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
 
   // Get session ID from URL params
   useEffect(() => {
@@ -103,6 +109,7 @@ export default function Home() {
         }
 
         const data = await response.json();
+        setWorkspaceInfo(data.events?.[0]?.workspace_dir);
 
         if (data.events && Array.isArray(data.events)) {
           // Process events to reconstruct the conversation
@@ -548,6 +555,18 @@ export default function Home() {
           ) {
             lastMessage.action.data.content = data.content.content as string;
             lastMessage.action.data.path = data.content.path as string;
+            const filePath = (data.content.path as string)?.includes(
+              workspaceInfo
+            )
+              ? (data.content.path as string)
+              : `${workspaceInfo}/${data.content.path}`;
+
+            setFilesContent((prev) => {
+              return {
+                ...prev,
+                [filePath]: data.content.content as string,
+              };
+            });
           }
           setTimeout(() => {
             handleClickAction(lastMessage.action);
@@ -726,9 +745,8 @@ export default function Home() {
       setSocket(ws);
     };
 
-    const id = searchParams.get("id");
     // Only connect if we have a device ID AND we're not viewing a session history
-    if (deviceId && !id) {
+    if (deviceId && !isReplayMode) {
       connectWebSocket();
     }
 
@@ -738,7 +756,7 @@ export default function Home() {
         socket.close();
       }
     };
-  }, [deviceId, searchParams]);
+  }, [deviceId, isReplayMode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1106,6 +1124,8 @@ export default function Home() {
                     workspaceInfo={workspaceInfo}
                     activeFile={activeFileCodeEditor}
                     setActiveFile={setActiveFileCodeEditor}
+                    filesContent={filesContent}
+                    isReplayMode={isReplayMode}
                   />
                   <Terminal
                     ref={xtermRef}

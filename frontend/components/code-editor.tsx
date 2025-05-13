@@ -63,6 +63,8 @@ interface CodeEditorProps {
   workspaceInfo?: string;
   activeFile?: string;
   setActiveFile?: (file: string) => void;
+  filesContent?: { [filename: string]: string };
+  isReplayMode?: boolean;
 }
 
 const CodeEditor = ({
@@ -70,6 +72,8 @@ const CodeEditor = ({
   workspaceInfo,
   activeFile,
   setActiveFile,
+  filesContent,
+  isReplayMode,
 }: CodeEditorProps) => {
   const [activeLanguage, setActiveLanguage] = useState<string>("plaintext");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
@@ -171,16 +175,23 @@ const CodeEditor = ({
   useEffect(() => {
     (async () => {
       if (activeFile && workspaceInfo) {
-        setActiveLanguage(getFileLanguage(activeFile));
-        const content = await loadFileContent(
-          activeFile.startsWith(workspaceInfo)
-            ? activeFile
-            : `${workspaceInfo}/${activeFile}`
-        );
+        const filePath = activeFile.startsWith(workspaceInfo)
+          ? activeFile
+          : `${workspaceInfo}/${activeFile}`;
+        // If we are in replay mode, use the file content from the filesContent prop
+        if (isReplayMode) {
+          const content = filesContent?.[filePath] || "";
+          setActiveLanguage(getFileLanguage(filePath));
+          setFileContent(content);
+          return;
+        }
+
+        setActiveLanguage(getFileLanguage(filePath));
+        const content = await loadFileContent(filePath);
         setFileContent(content);
       }
     })();
-  }, [activeFile, workspaceInfo]);
+  }, [activeFile, workspaceInfo, filesContent, isReplayMode]);
 
   const renderFileTree = (items: FileStructure[]) => {
     // Sort items: folders first, then files, both in alphabetical order
