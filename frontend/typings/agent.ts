@@ -64,6 +64,7 @@ export type ActionStep = {
     isResult?: boolean;
     tool_name?: string;
     tool_input?: {
+      text?: string;
       thought?: string;
       path?: string;
       file_text?: string;

@@ -222,7 +222,7 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
       case TOOL.BROWSER_CLICK:
         return value.tool_input?.url;
       case TOOL.BROWSER_ENTER_TEXT:
-        return value.tool_input?.url;
+        return value.tool_input?.text;
       case TOOL.BROWSER_PRESS_KEY:
         return value.tool_input?.key;
       case TOOL.BROWSER_GET_SELECT_OPTIONS:
