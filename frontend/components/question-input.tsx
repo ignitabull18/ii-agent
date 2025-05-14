@@ -184,8 +184,8 @@ const QuestionInput = ({
           </div>
         )}
         <Textarea
-          className={`w-full p-4 rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#35363a] border-[#ffffff0f] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.02)] ${
-            files.length > 0 ? "pt-24 h-60" : "h-40"
+          className={`w-full p-4 pb-[72px] rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#35363a] border-[#ffffff0f] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.02)] ${
+            files.length > 0 ? "pt-24 h-60" : "h-50"
           } ${textareaClassName}`}
           placeholder={
             placeholder ||
@@ -195,7 +195,7 @@ const QuestionInput = ({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        <div className="flex w-full justify-between items-center absolute bottom-4 px-4">
+        <div className="flex justify-between items-center absolute bottom-0 py-4 m-px w-[calc(100%-4px)] rounded-b-xl bg-[#35363a]  px-4">
           <div className="flex items-center gap-x-3">
             {handleFileUpload && (
               <label htmlFor="file-upload" className="cursor-pointer">
