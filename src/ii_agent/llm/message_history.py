@@ -1,5 +1,5 @@
 import json
-from typing import Optional, cast
+from typing import Optional, cast, Any
 from ii_agent.llm.base import (
     AssistantContentBlock,
     GeneralContentBlock,
@@ -9,6 +9,7 @@ from ii_agent.llm.base import (
     ToolCall,
     ToolCallParameters,
     ToolFormattedResult,
+    ImageBlock,
 )
 
 
@@ -18,9 +19,14 @@ class MessageHistory:
     def __init__(self):
         self._message_lists: list[list[GeneralContentBlock]] = []
 
-    def add_user_prompt(self, prompt: str):
+    def add_user_prompt(self, prompt: str, image_blocks: list[dict[str, Any]] | None = None):
         """Adds a user prompt."""
-        self.add_user_turn([TextPrompt(prompt)])
+        user_turn = []
+        for img_block in image_blocks:
+            user_turn.append(ImageBlock(type="image", source=img_block["source"]))
+
+        user_turn.append(TextPrompt(prompt))
+        self.add_user_turn(user_turn)
 
     def add_user_turn(self, messages: list[GeneralContentBlock]):
         """Adds a user turn (prompts and/or tool results)."""
@@ -28,7 +34,7 @@ class MessageHistory:
             raise ValueError("Cannot add user turn, expected assistant turn next.")
         # Ensure all messages are valid user-side types
         for msg in messages:
-            if not isinstance(msg, (TextPrompt, ToolFormattedResult)):
+            if not isinstance(msg, (TextPrompt, ToolFormattedResult, ImageBlock)):
                 raise TypeError(f"Invalid message type for user turn: {type(msg)}")
         self._message_lists.append(messages)
 

@@ -11,7 +11,7 @@ from ii_agent.utils import WorkspaceManager
 
 
 class VisualizerTool(LLMTool):
-    name = "visualizer"
+    name = "display_image"
     description = "A tool that loads and displays images."
     input_schema = {
         "type": "object",

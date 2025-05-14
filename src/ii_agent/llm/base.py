@@ -7,6 +7,7 @@ from anthropic.types import (
     ThinkingBlock as AnthropicThinkingBlock,
     RedactedThinkingBlock as AnthropicRedactedThinkingBlock,
 )
+from typing import Literal
 
 
 import logging
@@ -62,6 +63,12 @@ class TextPrompt(DataClassJsonMixin):
     """Internal representation of user-generated text prompt."""
 
     text: str
+
+
+@dataclass
+class ImageBlock(DataClassJsonMixin):
+    type: Literal["image"]
+    source: dict[str, Any]
 
 
 @dataclass

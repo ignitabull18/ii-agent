@@ -79,7 +79,7 @@ class BrowserConfig:
 
     cdp_url: Optional[str] = None
     viewport_size: ViewportSize = field(
-        default_factory=lambda: {"width": 1200, "height": 800}
+        default_factory=lambda: {"width": 1344, "height": 896}
     )
     storage_state: Optional[StorageState] = None
     detector: Optional[Detector] = None

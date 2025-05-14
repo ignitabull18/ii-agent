@@ -9,17 +9,19 @@ from ii_agent.utils import WorkspaceManager
 
 
 class TextInspectorTool(LLMTool):
-    name = "inspect_file_as_text"
-    description = """
-You cannot load files yourself: instead call this tool to read a file as markdown text and ask questions about it.
-This tool handles the following file extensions: [".html", ".htm", ".xlsx", ".pptx", ".wav", ".mp3", ".m4a", ".flac", ".pdf", ".docx"], and all other types of text files. IT DOES NOT HANDLE IMAGES."""
+    name = "get_text_from_local_file"
+    description = """Use this tool to get the text content from a local file. Supported file types: [".xlsx", ".pptx", ".flac", ".pdf", ".docx"]
+Note:
+- This tool works only with the supported file types listed above. 
+- For other file types, use other tools if available or you need to read by yourself.
+"""
 
     input_schema = {
         "type": "object",
         "properties": {
             "file_path": {
                 "type": "string",
-                "description": "The path to the file you want to read as text. Must be a '.something' file, like '.pdf'. If it is an image, use the visualizer tool instead! DO NOT use this tool for an HTML webpage: use the web_search tool instead!",
+                "description": "The path to the file you want to read.",
             },
         },
         "required": ["file_path"],
@@ -36,7 +38,7 @@ This tool handles the following file extensions: [".html", ".htm", ".xlsx", ".pp
         result = self.md_converter.convert(abs_path)
 
         if file_path[-4:] in [".png", ".jpg"]:
-            raise Exception("Cannot use inspect_file_as_text tool with images: use visualizer instead!")
+            raise Exception("Cannot use this tool with images: use display_image instead!")
 
         if ".zip" in file_path:
             return result.text_content

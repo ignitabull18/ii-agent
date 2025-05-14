@@ -23,6 +23,7 @@ from anthropic.types import (
     TextBlock as AnthropicTextBlock,
     ThinkingBlock as AnthropicThinkingBlock,
     RedactedThinkingBlock as AnthropicRedactedThinkingBlock,
+    ImageBlockParam as AnthropicImageBlockParam,
 )
 from anthropic.types import ToolParam as AnthropicToolParam
 from anthropic.types import (
@@ -48,6 +49,7 @@ from ii_agent.llm.base import (
     LLMMessages,
     ToolFormattedResult,
     recursively_remove_invoke_tag,
+    ImageBlock,
 )
 
 
@@ -120,6 +122,12 @@ class AnthropicDirectClient(LLMClient):
                     message_content = AnthropicTextBlock(
                         type="text",
                         text=message.text,
+                    )
+                elif str(type(message)) == str(ImageBlock):
+                    message = cast(ImageBlock, message)
+                    message_content = AnthropicImageBlockParam(
+                        type="image",
+                        source=message.source,
                     )
                 elif str(type(message)) == str(TextResult):
                     message = cast(TextResult, message)

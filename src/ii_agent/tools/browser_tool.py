@@ -58,7 +58,7 @@ class BrowserNavigationTool(LLMTool):
 
             is_pdf = is_pdf_url(url)
             if is_pdf:
-                await asyncio.sleep(3)
+                await asyncio.sleep(10)
                 await page.keyboard.press("Control+\\")
                 await asyncio.sleep(0.1)
             else:
@@ -103,9 +103,13 @@ class BrowserRestartTool(LLMTool):
                 return ToolImplOutput(msg, msg)
             is_pdf = is_pdf_url(url)
             if is_pdf:
-                await asyncio.sleep(3)
+                await asyncio.sleep(10)
                 await page.keyboard.press("Control+\\")
                 await asyncio.sleep(0.1)
+                return ToolImplOutput(
+                    tool_output=f"Navigated to {url}",
+                    tool_result_message=f"Navigated to {url}",
+                )
             else:
                 await asyncio.sleep(1.5)
                 msg = f"Navigated to {url}"
@@ -299,8 +303,16 @@ class BrowserClickTool(LLMTool):
         "properties": {
             "index": {
                 "type": "integer",
-                "description": "Index of the element to click on.",
-            }
+                "description": "(Optional) Index of the element to click on.",
+            },
+            "coordinate_x": {
+                "type": "number",
+                "description": "(Optional) X coordinate of click position"
+            },
+            "coordinate_y": {
+                "type": "number",
+                "description": "(Optional) Y coordinate of click position",
+            },
         },
         "required": ["index"],
     }
@@ -314,29 +326,51 @@ class BrowserClickTool(LLMTool):
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         async def _run():
-            index = int(tool_input["index"])
-            state = self.browser.get_state()
-            if index not in state.interactive_elements:
+            index = tool_input.get("index")
+            coordinate_x = tool_input.get("coordinate_x")
+            coordinate_y = tool_input.get("coordinate_y")
+            if not index and not coordinate_x and not coordinate_y:
                 return ToolImplOutput(
-                    tool_output=f"Element with index {index} does not exist - retry or use alternative tool.",
-                    tool_result_message=f"Element with index {index} does not exist - retry or use alternative tool.",
+                    tool_output="No index or coordinates provided",
+                    tool_result_message="No index or coordinates provided",
                 )
-            element = state.interactive_elements[index]
-            initial_pages = (
-                len(self.browser.context.pages) if self.browser.context else 0
-            )
+            if index and (coordinate_x or coordinate_y):
+                return ToolImplOutput(
+                    tool_output="Cannot provide both index and coordinates",
+                    tool_result_message="Cannot provide both index and coordinates",
+                )
 
-            page = await self.browser.get_current_page()
-            await page.mouse.click(element.center.x, element.center.y)
+            if index:
+                index = int(index)
+                state = self.browser.get_state()
+                if index not in state.interactive_elements:
+                    return ToolImplOutput(
+                        tool_output=f"Element with index {index} does not exist - retry or use alternative tool.",
+                        tool_result_message=f"Element with index {index} does not exist - retry or use alternative tool.",
+                    )
+                element = state.interactive_elements[index]
+                initial_pages = (
+                    len(self.browser.context.pages) if self.browser.context else 0
+                )
 
-            msg = f"Clicked element with index {index}: <{element.tag_name}></{element.tag_name}>"
+                page = await self.browser.get_current_page()
+                await page.mouse.click(element.center.x, element.center.y)
 
-            if self.browser.context and len(self.browser.context.pages) > initial_pages:
-                new_tab_msg = "New tab opened - switching to it"
-                msg += f" - {new_tab_msg}"
-                await self.browser.switch_to_tab(-1)
+                msg = f"Clicked element with index {index}: <{element.tag_name}></{element.tag_name}>"
 
-            return ToolImplOutput(tool_output=msg, tool_result_message=msg)
+                if self.browser.context and len(self.browser.context.pages) > initial_pages:
+                    new_tab_msg = "New tab opened - switching to it"
+                    msg += f" - {new_tab_msg}"
+                    await self.browser.switch_to_tab(-1)
+
+                return ToolImplOutput(tool_output=msg, tool_result_message=msg)
+            elif coordinate_x and coordinate_y:
+                await page.mouse.click(coordinate_x, coordinate_y)
+                msg = f"Clicked at coordinates {coordinate_x}, {coordinate_y}"
+                return ToolImplOutput(tool_output=msg, tool_result_message=msg)
+            else:
+                msg = f"No index or coordinates provided"
+                return ToolImplOutput(tool_output=msg, tool_result_message=msg)
 
         loop = get_event_loop()
         return loop.run_until_complete(_run())

@@ -46,10 +46,11 @@ from ii_agent.tools.advanced_tools.audio_tool import (
 from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
 from ii_agent.tools.text_inspector_tool import TextInspectorTool
 from ii_agent.tools.visualizer import VisualizerTool
-from ii_agent.tools.utils import save_base64_image_png
+from ii_agent.tools.utils import save_base64_image_png, encode_image
 from ii_agent.utils import WorkspaceManager
 from ii_agent.browser.browser import Browser
-
+from ii_agent.tools.youtube_tool import YoutubeVideoUnderstandingTool
+from ii_agent.tools.audio_understanding import AudioUnderstandingTool
 
 class AnthropicFC(BaseAgent):
     name = "general_agent"
@@ -144,7 +145,7 @@ try breaking down the task into smaller steps. After call this tool to update or
             TavilySearchTool(),
             TavilyVisitWebpageTool(),
             self.complete_tool,
-            StaticDeployTool(workspace_manager=workspace_manager),
+            # StaticDeployTool(workspace_manager=workspace_manager),
             # Browser tools
             BrowserNavigationTool(browser=self.browser),
             BrowserRestartTool(browser=self.browser),
@@ -152,22 +153,24 @@ try breaking down the task into smaller steps. After call this tool to update or
             BrowserScrollUpTool(browser=self.browser),
             BrowserViewTool(browser=self.browser, message_queue=self.message_queue),
             BrowserWaitTool(browser=self.browser),
-            BrowserSwitchTabTool(browser=self.browser),
-            BrowserOpenNewTabTool(browser=self.browser),
+            # BrowserSwitchTabTool(browser=self.browser),
+            # BrowserOpenNewTabTool(browser=self.browser),
             BrowserClickTool(browser=self.browser),
             BrowserEnterTextTool(browser=self.browser),
             BrowserPressKeyTool(browser=self.browser),
             BrowserGetSelectOptionsTool(browser=self.browser),
             BrowserSelectDropdownOptionTool(browser=self.browser),
             # audio tools
-            AudioTranscribeTool(workspace_manager=workspace_manager),
-            AudioGenerateTool(workspace_manager=workspace_manager),
+            # AudioTranscribeTool(workspace_manager=workspace_manager),
+            # AudioGenerateTool(workspace_manager=workspace_manager),
             # pdf tools
             # PdfTextExtractTool(workspace_manager=workspace_manager),
             # text inspector tool
             TextInspectorTool(workspace_manager=workspace_manager),
             # visualizer tool
             VisualizerTool(workspace_manager=workspace_manager),
+            YoutubeVideoUnderstandingTool(),
+            AudioUnderstandingTool(workspace_manager=workspace_manager),
         ]
         self.websocket = websocket
 
@@ -205,12 +208,35 @@ try breaking down the task into smaller steps. After call this tool to update or
         log_dir: Optional[str] = None,
     ) -> ToolImplOutput:
         instruction = tool_input["instruction"]
+        files = tool_input["files"]
 
         user_input_delimiter = "-" * 45 + " USER INPUT " + "-" * 45 + "\n" + instruction
         self.logger_for_agent_logs.info(f"\n{user_input_delimiter}\n")
 
-        # Add instruction to dialog before getting mode
-        self.history.add_user_prompt(instruction)
+        # Add instruction to dialog before getting model response
+        image_blocks = []
+        if files:
+            for file in files:
+                ext = file.split(".")[-1]
+                if ext == "jpg":
+                    ext = "jpeg"
+                if ext in ["png", "gif", "jpeg", "webp"]:
+                    base64_image = encode_image(file)
+                    image_blocks.append(
+                        {
+                            "source": {
+                                "type": "base64",
+                                "media_type": f"image/{ext}",
+                                "data": base64_image,
+                            }
+                        }
+                    )
+                else:
+                    instruction = f"""{instruction}\n\nAttached files:\n"""
+                    for file in files:
+                        instruction += f" - {file}\n"
+
+        self.history.add_user_prompt(instruction, image_blocks)
         self.interrupted = False
 
         step = 0
@@ -427,18 +453,19 @@ try breaking down the task into smaller steps. After call this tool to update or
 
             except KeyboardInterrupt:
                 # Handle interruption during model generation or other operations
-                self.interrupted = True
-                self.history.add_assistant_turn(
-                    [
-                        TextResult(
-                            text="Agent interrupted by user. You can resume by providing a new instruction."
-                        )
-                    ]
-                )
-                return ToolImplOutput(
-                    tool_output="Agent interrupted by user",
-                    tool_result_message="Agent interrupted by user",
-                )
+                # self.interrupted = True
+                # self.history.add_assistant_turn(
+                #     [
+                #         TextResult(
+                #             text="Agent interrupted by user. You can resume by providing a new instruction."
+                #         )
+                #     ]
+                # )
+                # return ToolImplOutput(
+                #     tool_output="Agent interrupted by user",
+                #     tool_result_message="Agent interrupted by user",
+                # )
+                raise
 
         agent_answer = "Agent did not complete after max turns"
         return ToolImplOutput(
@@ -451,6 +478,7 @@ try breaking down the task into smaller steps. After call this tool to update or
     def run_agent(
         self,
         instruction: str,
+        files: list[str] | None = None,
         resume: bool = False,
         orientation_instruction: str | None = None,
         log_dir: str | None = None,
@@ -474,6 +502,7 @@ try breaking down the task into smaller steps. After call this tool to update or
 
         tool_input = {
             "instruction": instruction,
+            "files": files,
         }
         if orientation_instruction:
             tool_input["orientation_instruction"] = orientation_instruction

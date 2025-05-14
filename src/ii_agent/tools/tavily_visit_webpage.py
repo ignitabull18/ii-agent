@@ -49,17 +49,17 @@ class TavilyVisitWebpageTool(LLMTool):
 
             # Check if response contains results
             if not response or "results" not in response or not response["results"]:
-                return f"No content could be extracted from {url}"
+                return f"Failed to extract content from {url} using this tool. Please visit the webpage in a browser to manually verify the content or confirm that none is available."
 
             # Extract the content from the first result
             content = json.dumps(response["results"][0], indent=4)
             if not content:
-                return f"No textual content could be extracted from {url}"
+                return f"Failed to extract content from {url} using this tool. Please visit the webpage in a browser to manually verify the content or confirm that none is available."
 
             return truncate_content(content, self.max_output_length)
 
         except Exception as e:
-            return f"Error extracting the webpage content using Tavily: {str(e)}"
+            return f"Error extracting the webpage content using Tavily: {str(e)}. Please visit the webpage in a browser to manually verify the content or confirm that none is available."
 
     def run_impl(
         self,
@@ -67,6 +67,8 @@ class TavilyVisitWebpageTool(LLMTool):
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         url = tool_input["url"]
+        if "arxiv.org/abs" in url:
+            url = "https://arxiv.org/html/" + url.split("/")[-1]
         output = self.forward(url)
         return ToolImplOutput(
             output,

@@ -5,11 +5,13 @@ from ii_agent.llm.base import (
     TextResult,
     ToolCall,
     ToolFormattedResult,
+    ImageBlock,
 )
 from anthropic.types import (
     ThinkingBlock as AnthropicThinkingBlock,
     RedactedThinkingBlock as AnthropicRedactedThinkingBlock,
 )
+from copy import deepcopy
 
 
 def _hide_base64_image_from_tool_output(tool_output: list[dict]) -> list[dict]:
@@ -85,6 +87,13 @@ def convert_message_to_json(message: GeneralContentBlock, hide_base64_image: boo
             "thinking": message.thinking,
             "signature": message.signature,
         }
+    elif str(type(message)) == str(ImageBlock):
+        message_json = {
+            "type": "image",
+            "source": message.source,
+        }
+        if hide_base64_image:
+            message_json["source"]["data"] = "[base64-image-data]"
     else:
         print(
             f"Unknown message type: {type(message)}, expected one of {str(TextPrompt)}, {str(TextResult)}, {str(ToolCall)}, {str(ToolFormattedResult)}"
@@ -105,8 +114,9 @@ def convert_message_history_to_json(messages: LLMMessages, hide_base64_image: bo
     Returns:
         list[list[dict]]: The JSON object.
     """
+    messages_cp = deepcopy(messages)
     messages_json = []
-    for idx, message_list in enumerate(messages):
+    for idx, message_list in enumerate(messages_cp):
         role = "user" if idx % 2 == 0 else "assistant"
         message_content_list = [convert_message_to_json(message, hide_base64_image) for message in message_list]
         messages_json.append({
