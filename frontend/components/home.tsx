@@ -399,7 +399,7 @@ export default function Home() {
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({
-                    connection_id: connectionId,
+                    session_id: connectionId,
                     file: {
                       path: file.name,
                       content,
