@@ -33,14 +33,15 @@ const Terminal = dynamic(() => import("@/components/terminal"), {
   ssr: false,
 });
 import { Button } from "@/components/ui/button";
-import { ActionStep, AgentEvent, IEvent, Message, TOOL } from "@/typings/agent";
+import {
+  ActionStep,
+  AgentEvent,
+  IEvent,
+  Message,
+  TAB,
+  TOOL,
+} from "@/typings/agent";
 import ChatMessage from "./chat-message";
-
-enum TAB {
-  BROWSER = "browser",
-  CODE = "code",
-  TERMINAL = "terminal",
-}
 
 export default function Home() {
   const xtermRef = useRef<XTerm | null>(null);
@@ -59,7 +60,6 @@ export default function Home() {
   const [workspaceInfo, setWorkspaceInfo] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const [codeEditorKey, setCodeEditorKey] = useState("code-editor");
   const [isUseDeepResearch, setIsUseDeepResearch] = useState(false);
   const [deviceId, setDeviceId] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -683,12 +683,6 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (currentActionData) {
-      setCodeEditorKey(JSON.stringify(currentActionData));
-    }
-  }, [currentActionData]);
-
-  useEffect(() => {
     // Connect to WebSocket when the component mounts
     const connectWebSocket = () => {
       const params = new URLSearchParams({ device_id: deviceId });
@@ -938,7 +932,8 @@ export default function Home() {
                     }
                   />
                   <CodeEditor
-                    key={codeEditorKey}
+                    currentActionData={currentActionData}
+                    activeTab={activeTab}
                     className={activeTab === TAB.CODE ? "" : "hidden"}
                     workspaceInfo={workspaceInfo}
                     activeFile={activeFileCodeEditor}

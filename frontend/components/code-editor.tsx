@@ -10,6 +10,7 @@ import {
   ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
+import { ActionStep, TAB } from "@/typings/agent";
 
 const ROOT_NAME = "ii-agent";
 
@@ -60,20 +61,24 @@ interface FileStructure {
 
 interface CodeEditorProps {
   className?: string;
+  currentActionData?: ActionStep;
   workspaceInfo?: string;
   activeFile?: string;
   setActiveFile?: (file: string) => void;
   filesContent?: { [filename: string]: string };
   isReplayMode?: boolean;
+  activeTab?: TAB;
 }
 
 const CodeEditor = ({
   className,
+  currentActionData,
   workspaceInfo,
   activeFile,
   setActiveFile,
   filesContent,
   isReplayMode,
+  activeTab,
 }: CodeEditorProps) => {
   const [activeLanguage, setActiveLanguage] = useState<string>("plaintext");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
@@ -138,10 +143,10 @@ const CodeEditor = ({
   };
 
   useEffect(() => {
-    if (workspaceInfo) {
+    if (workspaceInfo && activeTab === TAB.CODE) {
       loadDirectory(workspaceInfo);
     }
-  }, [activeFile, workspaceInfo]);
+  }, [currentActionData, workspaceInfo, activeTab]);
 
   const toggleFolder = (folderPath: string) => {
     setExpandedFolders((prev) => {
@@ -191,7 +196,13 @@ const CodeEditor = ({
         setFileContent(content);
       }
     })();
-  }, [activeFile, workspaceInfo, filesContent, isReplayMode]);
+  }, [
+    activeFile,
+    workspaceInfo,
+    filesContent,
+    currentActionData,
+    isReplayMode,
+  ]);
 
   const renderFileTree = (items: FileStructure[]) => {
     // Sort items: folders first, then files, both in alphabetical order

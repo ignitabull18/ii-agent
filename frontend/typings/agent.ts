@@ -1,3 +1,9 @@
+export enum TAB {
+  BROWSER = "browser",
+  CODE = "code",
+  TERMINAL = "terminal",
+}
+
 export type Source = {
   title: string;
   url: string;
