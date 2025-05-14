@@ -43,7 +43,7 @@ GOOGLE_APPLICATION_CREDENTIALS=
 For the frontend, create a `.env` file in the frontend directory:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000/
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 
