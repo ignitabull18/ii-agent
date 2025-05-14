@@ -6,7 +6,7 @@ import Home from "@/components/home";
 
 export default function Page() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<></>}>
       <Home />
     </Suspense>
   );

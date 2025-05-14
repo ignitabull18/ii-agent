@@ -77,6 +77,16 @@ export type ActionStep = {
   };
 };
 
+export interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content?: string;
+  timestamp: number;
+  action?: ActionStep;
+  files?: string[]; // File names
+  fileContents?: { [filename: string]: string }; // Base64 content of files
+}
+
 export interface ISession {
   id: string;
   workspace_dir: string;

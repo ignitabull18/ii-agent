@@ -20,7 +20,7 @@ import {
   Terminal,
   Video,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 interface ActionProps {
   workspaceInfo: string;
@@ -30,6 +30,14 @@ interface ActionProps {
 }
 
 const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
+  // Use a ref to track if this component has already been animated
+  const hasAnimated = useRef(false);
+
+  // Set hasAnimated to true after first render
+  useEffect(() => {
+    hasAnimated.current = true;
+  }, []);
+
   const step_icon = useMemo(() => {
     const className = "h-4 w-4 text-neutral-100 flex-shrink-0 mt-[2px]";
     switch (type) {
@@ -236,13 +244,14 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer flex items-start gap-2 px-3 py-2 bg-[#35363a] rounded-xl backdrop-blur-sm 
+      className={`group cursor-pointer flex items-start gap-2 px-3 py-2 bg-[#35363a] rounded-xl backdrop-blur-sm 
       shadow-sm
       transition-all duration-200 ease-out
       hover:bg-neutral-800
       hover:border-neutral-700
       hover:shadow-[0_2px_8px_rgba(0,0,0,0.24)]
-      active:scale-[0.98] overflow-hidden"
+      active:scale-[0.98] overflow-hidden
+      ${hasAnimated.current ? "animate-none" : "animate-fadeIn"}`}
     >
       {step_icon}
       <div className="flex flex-col gap-1.5 text-sm">
