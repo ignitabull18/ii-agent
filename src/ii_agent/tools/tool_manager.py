@@ -38,7 +38,7 @@ from ii_agent.tools.advanced_tools.video_gen_tool import VideoGenerateFromTextTo
 from ii_agent.tools.advanced_tools.image_gen_tool import ImageGenerateTool
 from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
 from ii_agent.tools.deep_research_tool import DeepResearchTool
-
+from ii_agent.tools.list_html_links_tool import ListHtmlLinksTool
 
 def get_system_tools(
     workspace_manager: WorkspaceManager,
@@ -69,6 +69,7 @@ def get_system_tools(
         StaticDeployTool(workspace_manager=workspace_manager),
         StrReplaceEditorTool(workspace_manager=workspace_manager, message_queue=message_queue),
         bash_tool,
+        ListHtmlLinksTool(workspace_manager=workspace_manager),
     ]
 
     # Conditionally add tools based on tool_args

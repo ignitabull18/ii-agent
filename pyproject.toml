@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Intelligent Agent platform providing CLI and WebSocket interfaces"
 readme = "README.md"
 authors = [
-    { name = "khongtrunght", email = "khongtrunght@gmail.com" }
+    { name = "Intelligent Internet", email = "info@ii.inc" }
 ]
 requires-python = ">=3.10"
 dependencies = [
