@@ -80,7 +80,7 @@ class BrowserConfig:
 
     cdp_url: Optional[str] = None
     viewport_size: ViewportSize = field(
-        default_factory=lambda: {"width": 1200, "height": 800}
+        default_factory=lambda: {"width": 1268, "height": 951}
     )
     storage_state: Optional[StorageState] = None
     detector: Optional[Detector] = None
@@ -217,6 +217,20 @@ class Browser:
         logger.info(f"Current page changed to {page.url}")
 
         self._cdp_session = await self.context.new_cdp_session(page)
+
+        # set viewport size 
+        await self._cdp_session.send("Emulation.setDeviceMetricsOverride", {
+            "width": self.config.viewport_size["width"],
+            "height": self.config.viewport_size["height"],
+            "deviceScaleFactor": 1,
+            "mobile": False,
+        })
+        # Optional: adjust visible size (for headless rendering)
+        await self._cdp_session.send("Emulation.setVisibleSize", {
+            "width": self.config.viewport_size["width"],
+            "height": self.config.viewport_size["height"],
+        })
+
         self.current_page = page
 
     async def _apply_anti_detection_scripts(self):
@@ -473,6 +487,20 @@ class Browser:
             or self._cdp_session._page != self.current_page
         ):
             self._cdp_session = await self.context.new_cdp_session(self.current_page)
+
+            # set viewport size 
+            await self._cdp_session.send("Emulation.setDeviceMetricsOverride", {
+                "width": self.config.viewport_size["width"],
+                "height": self.config.viewport_size["height"],
+                "deviceScaleFactor": 1,
+                "mobile": False,
+            })
+            # Optional: adjust visible size (for headless rendering)
+            await self._cdp_session.send("Emulation.setVisibleSize", {
+                "width": self.config.viewport_size["width"],
+                "height": self.config.viewport_size["height"],
+            })
+
             # Store reference to the page this session belongs to
             self._cdp_session._page = self.current_page
 
@@ -498,13 +526,6 @@ class Browser:
             "Page.captureScreenshot", screenshot_params
         )
         screenshot_b64 = screenshot_data["data"]
-
-        if self.screenshot_scale_factor is None:
-            test_img_data = base64.b64decode(screenshot_b64)
-            test_img = Image.open(io.BytesIO(test_img_data))
-            logger.info(f"Test image size: {test_img.size}")
-            self.screenshot_scale_factor = 1024 / test_img.size[0]
-            logger.info(f"Screenshot scale factor: {self.screenshot_scale_factor}")
 
         screenshot_b64 = scale_b64_image(screenshot_b64, self.screenshot_scale_factor)
         return screenshot_b64
