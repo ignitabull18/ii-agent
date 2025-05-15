@@ -10,6 +10,7 @@ import {
   ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
+import { ActionStep, TAB } from "@/typings/agent";
 
 const ROOT_NAME = "ii-agent";
 
@@ -60,16 +61,24 @@ interface FileStructure {
 
 interface CodeEditorProps {
   className?: string;
+  currentActionData?: ActionStep;
   workspaceInfo?: string;
   activeFile?: string;
   setActiveFile?: (file: string) => void;
+  filesContent?: { [filename: string]: string };
+  isReplayMode?: boolean;
+  activeTab?: TAB;
 }
 
 const CodeEditor = ({
   className,
+  currentActionData,
   workspaceInfo,
   activeFile,
   setActiveFile,
+  filesContent,
+  isReplayMode,
+  activeTab,
 }: CodeEditorProps) => {
   const [activeLanguage, setActiveLanguage] = useState<string>("plaintext");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
@@ -134,10 +143,10 @@ const CodeEditor = ({
   };
 
   useEffect(() => {
-    if (workspaceInfo) {
+    if (workspaceInfo && activeTab === TAB.CODE) {
       loadDirectory(workspaceInfo);
     }
-  }, [activeFile, workspaceInfo]);
+  }, [currentActionData, workspaceInfo, activeTab]);
 
   const toggleFolder = (folderPath: string) => {
     setExpandedFolders((prev) => {
@@ -170,13 +179,30 @@ const CodeEditor = ({
 
   useEffect(() => {
     (async () => {
-      if (activeFile) {
-        setActiveLanguage(getFileLanguage(activeFile));
-        const content = await loadFileContent(activeFile);
+      if (activeFile && workspaceInfo) {
+        const filePath = activeFile.startsWith(workspaceInfo)
+          ? activeFile
+          : `${workspaceInfo}/${activeFile}`;
+        // If we are in replay mode, use the file content from the filesContent prop
+        if (isReplayMode) {
+          const content = filesContent?.[filePath] || "";
+          setActiveLanguage(getFileLanguage(filePath));
+          setFileContent(content);
+          return;
+        }
+
+        setActiveLanguage(getFileLanguage(filePath));
+        const content = await loadFileContent(filePath);
         setFileContent(content);
       }
     })();
-  }, [activeFile]);
+  }, [
+    activeFile,
+    workspaceInfo,
+    filesContent,
+    currentActionData,
+    isReplayMode,
+  ]);
 
   const renderFileTree = (items: FileStructure[]) => {
     // Sort items: folders first, then files, both in alphabetical order

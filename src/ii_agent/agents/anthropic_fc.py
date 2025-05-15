@@ -1,56 +1,21 @@
 import asyncio
-from copy import deepcopy
-import json
 import logging
-import os
 from typing import Any, Optional
+import uuid
+
+from typing import List
 from fastapi import WebSocket
 from ii_agent.agents.base import BaseAgent
 from ii_agent.core.event import EventType, RealtimeEvent
 from ii_agent.llm.base import LLMClient, TextResult
 from ii_agent.llm.context_manager.base import ContextManager
 from ii_agent.llm.message_history import MessageHistory
-from ii_agent.llm.utils import convert_message_history_to_json, convert_message_to_json
-from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
-from ii_agent.tools import (
-    CompleteTool,
-    create_bash_tool,
-    create_docker_bash_tool,
-    StrReplaceEditorTool,
-    SequentialThinkingTool,
-    TavilySearchTool,
-    TavilyVisitWebpageTool,
-    StaticDeployTool,
-)
 from ii_agent.tools.base import ToolImplOutput, LLMTool
-from ii_agent.tools.browser_tool import (
-    BrowserNavigationTool,
-    BrowserRestartTool,
-    BrowserScrollDownTool,
-    BrowserScrollUpTool,
-    BrowserViewTool,
-    BrowserWaitTool,
-    BrowserSwitchTabTool,
-    BrowserOpenNewTabTool,
-    BrowserClickTool,
-    BrowserEnterTextTool,
-    BrowserPressKeyTool,
-    BrowserGetSelectOptionsTool,
-    BrowserSelectDropdownOptionTool,
-)
+from ii_agent.tools.utils import encode_image
+from ii_agent.db.manager import DatabaseManager
+from ii_agent.tools import AgentToolManager
+from ii_agent.utils.workspace_manager import WorkspaceManager
 
-from ii_agent.tools.advanced_tools.audio_tool import (
-    AudioTranscribeTool,
-    AudioGenerateTool,
-)
-from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
-from ii_agent.tools.text_inspector_tool import TextInspectorTool
-from ii_agent.tools.visualizer import VisualizerTool
-from ii_agent.tools.utils import save_base64_image_png, encode_image
-from ii_agent.utils import WorkspaceManager
-from ii_agent.browser.browser import Browser
-from ii_agent.tools.youtube_tool import YoutubeVideoUnderstandingTool
-from ii_agent.tools.audio_understanding import AudioUnderstandingTool
 
 class AnthropicFC(BaseAgent):
     name = "general_agent"
@@ -72,118 +37,76 @@ try breaking down the task into smaller steps. After call this tool to update or
     }
     websocket: Optional[WebSocket]
 
-    def _get_system_prompt(self):
-        """Get the system prompt, including any pending messages.
-
-        Returns:
-            The system prompt with messages prepended if any
-        """
-        return SYSTEM_PROMPT.format(
-            workspace_root=self.workspace_manager.root,
-        )
-
     def __init__(
         self,
+        system_prompt: str,
         client: LLMClient,
+        tools: List[LLMTool],
         workspace_manager: WorkspaceManager,
+        message_queue: asyncio.Queue,
         logger_for_agent_logs: logging.Logger,
         context_manager: ContextManager,
         max_output_tokens_per_turn: int = 8192,
         max_turns: int = 10,
-        ask_user_permission: bool = False,
-        docker_container_id: Optional[str] = None,
         websocket: Optional[WebSocket] = None,
+        session_id: Optional[uuid.UUID] = None,
     ):
         """Initialize the agent.
 
         Args:
+            system_prompt: The system prompt to use
             client: The LLM client to use
-            workspace_manager: Workspace manager for taking snapshots
+            tools: List of tools to use
+            message_queue: Message queue for real-time communication
             logger_for_agent_logs: Logger for agent logs
             context_manager: Context manager for managing conversation context
             max_output_tokens_per_turn: Maximum tokens per turn
             max_turns: Maximum number of turns
-            ask_user_permission: Whether to ask for permission before executing commands
-            docker_container_id: Optional Docker container ID to run commands in
             websocket: Optional WebSocket for real-time communication
+            session_id: UUID of the session this agent belongs to
         """
         super().__init__()
+        self.workspace_manager = workspace_manager
+        self.system_prompt = system_prompt
         self.client = client
+        self.tool_manager = AgentToolManager(
+            tools=tools,
+            logger_for_agent_logs=logger_for_agent_logs,
+        )
+
         self.logger_for_agent_logs = logger_for_agent_logs
         self.max_output_tokens = max_output_tokens_per_turn
         self.max_turns = max_turns
-        self.workspace_manager = workspace_manager
+
         self.interrupted = False
         self.history = MessageHistory()
         self.context_manager = context_manager
+        self.session_id = session_id
 
-        # Create and store the complete tool
-        self.complete_tool = CompleteTool()
+        # Initialize database manager
+        self.db_manager = DatabaseManager()
 
-        if docker_container_id is not None:
-            self.logger_for_agent_logs.info(
-                f"Enabling docker bash tool with container {docker_container_id}"
-            )
-            bash_tool = create_docker_bash_tool(
-                container=docker_container_id,
-                ask_user_permission=ask_user_permission,
-            )
-        else:
-            bash_tool = create_bash_tool(
-                ask_user_permission=ask_user_permission,
-                cwd=workspace_manager.root,
-            )
-
-        self.message_queue = asyncio.Queue()
-
-        self.browser = Browser()
-
-        self.tools = [
-            bash_tool,
-            StrReplaceEditorTool(workspace_manager=workspace_manager),
-            SequentialThinkingTool(),
-            TavilySearchTool(),
-            TavilyVisitWebpageTool(),
-            self.complete_tool,
-            # StaticDeployTool(workspace_manager=workspace_manager),
-            # Browser tools
-            BrowserNavigationTool(browser=self.browser),
-            BrowserRestartTool(browser=self.browser),
-            BrowserScrollDownTool(browser=self.browser),
-            BrowserScrollUpTool(browser=self.browser),
-            BrowserViewTool(browser=self.browser, message_queue=self.message_queue),
-            BrowserWaitTool(browser=self.browser),
-            # BrowserSwitchTabTool(browser=self.browser),
-            # BrowserOpenNewTabTool(browser=self.browser),
-            BrowserClickTool(browser=self.browser),
-            BrowserEnterTextTool(browser=self.browser),
-            BrowserPressKeyTool(browser=self.browser),
-            BrowserGetSelectOptionsTool(browser=self.browser),
-            BrowserSelectDropdownOptionTool(browser=self.browser),
-            # audio tools
-            # AudioTranscribeTool(workspace_manager=workspace_manager),
-            # AudioGenerateTool(workspace_manager=workspace_manager),
-            # pdf tools
-            # PdfTextExtractTool(workspace_manager=workspace_manager),
-            # text inspector tool
-            TextInspectorTool(workspace_manager=workspace_manager),
-            # visualizer tool
-            VisualizerTool(workspace_manager=workspace_manager),
-            YoutubeVideoUnderstandingTool(),
-            AudioUnderstandingTool(workspace_manager=workspace_manager),
-        ]
+        self.message_queue = message_queue
         self.websocket = websocket
 
     async def _process_messages(self):
-        if not self.websocket:
-            return
-
         try:
             while True:
                 try:
                     message: RealtimeEvent = await self.message_queue.get()
 
-                    await self.websocket.send_json(message.model_dump())
+                    # Save all events to database if we have a session
+                    if self.session_id is not None:
+                        print("Processing messages")
+                        self.db_manager.save_event(self.session_id, message)
+                    else:
+                        self.logger_for_agent_logs.info(
+                            f"No session ID, skipping event: {message}"
+                        )
+
+                    # Only send to websocket if this is not an event from the client
+                    if message.type != EventType.USER_MESSAGE and self.websocket:
+                        await self.websocket.send_json(message.model_dump())
 
                     self.message_queue.task_done()
                 except asyncio.CancelledError:
@@ -197,6 +120,16 @@ try breaking down the task into smaller steps. After call this tool to update or
         except Exception as e:
             self.logger_for_agent_logs.error(f"Error in message processor: {str(e)}")
 
+    def _validate_tool_parameters(self):
+        """Validate tool parameters and check for duplicates."""
+        tool_params = [tool.get_tool_param() for tool in self.tool_manager.get_tools()]
+        tool_names = [param.name for param in tool_params]
+        sorted_names = sorted(tool_names)
+        for i in range(len(sorted_names) - 1):
+            if sorted_names[i] == sorted_names[i + 1]:
+                raise ValueError(f"Tool {sorted_names[i]} is duplicated")
+        return tool_params
+
     def start_message_processing(self):
         """Start processing the message queue."""
         return asyncio.create_task(self._process_messages())
@@ -205,7 +138,6 @@ try breaking down the task into smaller steps. After call this tool to update or
         self,
         tool_input: dict[str, Any],
         message_history: Optional[MessageHistory] = None,
-        log_dir: Optional[str] = None,
     ) -> ToolImplOutput:
         instruction = tool_input["instruction"]
         files = tool_input["files"]
@@ -216,6 +148,12 @@ try breaking down the task into smaller steps. After call this tool to update or
         # Add instruction to dialog before getting model response
         image_blocks = []
         if files:
+            # First, list all attached files
+            instruction = f"""{instruction}\n\nAttached files:\n"""
+            for file in files:
+                instruction += f" - {file}\n"  # TODO: convert to relative path
+
+            # Then process images for image blocks
             for file in files:
                 ext = file.split(".")[-1]
                 if ext == "jpg":
@@ -231,46 +169,22 @@ try breaking down the task into smaller steps. After call this tool to update or
                             }
                         }
                     )
-                else:
-                    instruction = f"""{instruction}\n\nAttached files:\n"""
-                    for file in files:
-                        instruction += f" - {file}\n"
 
         self.history.add_user_prompt(instruction, image_blocks)
         self.interrupted = False
 
-        step = 0
-
         remaining_turns = self.max_turns
         while remaining_turns > 0:
-            step_log_dir = f"{log_dir}/step_{step}"
-            os.makedirs(step_log_dir, exist_ok=True)
-
             remaining_turns -= 1
-            step += 1
 
             delimiter = "-" * 45 + " NEW TURN " + "-" * 45
             self.logger_for_agent_logs.info(f"\n{delimiter}\n")
 
             # Get tool parameters for available tools
-            tool_params = [tool.get_tool_param() for tool in self.tools]
-
-            # Check for duplicate tool names
-            tool_names = [param.name for param in tool_params]
-            sorted_names = sorted(tool_names)
-            for i in range(len(sorted_names) - 1):
-                if sorted_names[i] == sorted_names[i + 1]:
-                    raise ValueError(f"Tool {sorted_names[i]} is duplicated")
+            all_tool_params = self._validate_tool_parameters()
 
             try:
                 current_messages = self.history.get_messages_for_llm()
-                current_messages_json = convert_message_history_to_json(current_messages)
-                current_messages_json_hide_img = convert_message_history_to_json(current_messages, hide_base64_image=True)
-                with open(f"{step_log_dir}/current_messages.json", "w") as f:
-                    json.dump(current_messages_json, f, indent=4)
-                with open(f"{step_log_dir}/current_messages_hide_img.json", "w") as f:
-                    json.dump(current_messages_json_hide_img, f, indent=4)
-
                 current_tok_count = self.context_manager.count_tokens(current_messages)
                 self.logger_for_agent_logs.info(
                     f"(Current token count: {current_tok_count})\n"
@@ -279,12 +193,6 @@ try breaking down the task into smaller steps. After call this tool to update or
                 truncated_messages_for_llm = (
                     self.context_manager.apply_truncation_if_needed(current_messages)
                 )
-                truncated_messages_for_llm_json = convert_message_history_to_json(truncated_messages_for_llm)
-                truncated_messages_for_llm_json_hide_img = convert_message_history_to_json(truncated_messages_for_llm, hide_base64_image=True)
-                with open(f"{step_log_dir}/truncated_messages_for_llm.json", "w") as f:
-                    json.dump(truncated_messages_for_llm_json, f, indent=4)
-                with open(f"{step_log_dir}/truncated_messages_for_llm_hide_img.json", "w") as f:
-                    json.dump(truncated_messages_for_llm_json_hide_img, f, indent=4)
 
                 # NOTE:
                 # If truncation happened, the `history` object itself was modified.
@@ -294,13 +202,9 @@ try breaking down the task into smaller steps. After call this tool to update or
                 model_response, _ = self.client.generate(
                     messages=truncated_messages_for_llm,
                     max_tokens=self.max_output_tokens,
-                    tools=tool_params,
-                    system_prompt=self._get_system_prompt(),
+                    tools=all_tool_params,
+                    system_prompt=self.system_prompt,
                 )
-
-                model_response_json = [convert_message_to_json(msg) for msg in model_response]
-                with open(f"{step_log_dir}/model_response.json", "w") as f:
-                    json.dump(model_response_json, f, indent=4)
 
                 # Add the raw response to the canonical history
                 self.history.add_assistant_turn(model_response)
@@ -343,75 +247,9 @@ try breaking down the task into smaller steps. After call this tool to update or
                         f"Top-level agent planning next step: {text_result.text}\n",
                     )
 
+                # Handle tool call by the agent
                 try:
-                    tool: LLMTool = next(
-                        t for t in self.tools if t.name == tool_call.tool_name
-                    )
-                except StopIteration as exc:
-                    raise ValueError(
-                        f"Tool with name {tool_call.tool_name} not found"
-                    ) from exc
-
-                try:
-                    result = tool.run(tool_call.tool_input, deepcopy(self.history))
-
-                    tool_call_json = {
-                        "type": "tool_call",
-                        "tool_call_id": tool_call.tool_call_id,
-                        "tool_name": tool_call.tool_name,
-                        "tool_input": tool_call.tool_input,
-                    }
-                    with open(f"{step_log_dir}/tool_call.json", "w") as f:
-                        json.dump(tool_call_json, f, indent=4)
-
-                    tool_input_str = "\n".join(
-                        [f" - {k}: {v}" for k, v in tool_call.tool_input.items()]
-                    )
-
-                    log_message = f"Calling tool {tool_call.tool_name} with input:\n{tool_input_str}"
-                    if isinstance(result, str):
-                        log_message += f"\nTool output: \n{result}\n\n"
-                    else:
-                        # Handle image data in tool output more gracefully
-                        if isinstance(result, list):
-                            output_str = ""
-                            for item in result:
-                                if isinstance(item, dict):
-                                    if item.get("type") == "image":
-                                        output_str += "[Image data truncated for logging]\n"
-                                    else:
-                                        output_str += str(item) + "\n"
-                                else:
-                                    output_str += str(item) + "\n"
-                            log_message += f"\nTool output: \n{output_str}\n\n"
-                        else:
-                            log_message += f"\nTool output: \n{result[0]}\n\n"
-
-                    self.logger_for_agent_logs.info(log_message)
-
-                    tool_result_json = {
-                        "type": "tool_result",
-                        "tool_call_id": tool_call.tool_call_id,
-                        "tool_name": tool_call.tool_name,
-                        "tool_output": result,
-                    }
-                    with open(f"{step_log_dir}/tool_result.json", "w") as f:
-                        json.dump(tool_result_json, f, indent=4)
-                    if isinstance(result, list):
-                        for item in result:
-                            if isinstance(item, dict) and item.get("type") == "image":
-                                img_base64 = item.get("source").get("data")
-                                if tool_call.tool_name == "browser_view":
-                                    save_base64_image_png(img_base64, f"{step_log_dir}/browser_view.png")
-                                elif tool_call.tool_name == "display_local_image":
-                                    save_base64_image_png(img_base64, f"{step_log_dir}/display_local_image.png")
-
-                    # Handle both ToolResult objects and tuples
-                    if isinstance(result, tuple):
-                        tool_result, _ = result
-                    else:
-                        tool_result = result
-
+                    tool_result = self.tool_manager.run_tool(tool_call, self.history)
                     self.history.add_tool_call_result(tool_call, tool_result)
 
                     self.message_queue.put_nowait(
@@ -424,14 +262,20 @@ try breaking down the task into smaller steps. After call this tool to update or
                             },
                         )
                     )
-                    if self.complete_tool.should_stop:
+                    if self.tool_manager.should_stop():
                         # Add a fake model response, so the next turn is the user's
                         # turn in case they want to resume
                         self.history.add_assistant_turn(
                             [TextResult(text="Completed the task.")]
                         )
+                        self.message_queue.put_nowait(
+                            RealtimeEvent(
+                                type=EventType.AGENT_RESPONSE,
+                                content={"text": self.tool_manager.get_final_answer()},
+                            )
+                        )
                         return ToolImplOutput(
-                            tool_output=self.complete_tool.answer,
+                            tool_output=self.tool_manager.get_final_answer(),
                             tool_result_message="Task completed",
                         )
                 except KeyboardInterrupt:
@@ -446,6 +290,12 @@ try breaking down the task into smaller steps. After call this tool to update or
                             )
                         ]
                     )
+                    self.message_queue.put_nowait(
+                        RealtimeEvent(
+                            type=EventType.AGENT_RESPONSE,
+                            content={"text": interrupt_message},
+                        )
+                    )
                     return ToolImplOutput(
                         tool_output=interrupt_message,
                         tool_result_message=interrupt_message,
@@ -453,21 +303,29 @@ try breaking down the task into smaller steps. After call this tool to update or
 
             except KeyboardInterrupt:
                 # Handle interruption during model generation or other operations
-                # self.interrupted = True
-                # self.history.add_assistant_turn(
-                #     [
-                #         TextResult(
-                #             text="Agent interrupted by user. You can resume by providing a new instruction."
-                #         )
-                #     ]
-                # )
-                # return ToolImplOutput(
-                #     tool_output="Agent interrupted by user",
-                #     tool_result_message="Agent interrupted by user",
-                # )
-                raise
+                self.interrupted = True
+                self.history.add_assistant_turn(
+                    [
+                        TextResult(
+                            text="Agent interrupted by user. You can resume by providing a new instruction."
+                        )
+                    ]
+                )
+                self.message_queue.put_nowait(
+                    RealtimeEvent(
+                        type=EventType.AGENT_RESPONSE,
+                        content={"text": "Agent interrupted by user"},
+                    )
+                )
+                return ToolImplOutput(
+                    tool_output="Agent interrupted by user",
+                    tool_result_message="Agent interrupted by user",
+                )
 
         agent_answer = "Agent did not complete after max turns"
+        self.message_queue.put_nowait(
+            RealtimeEvent(type=EventType.AGENT_RESPONSE, content={"text": agent_answer})
+        )
         return ToolImplOutput(
             tool_output=agent_answer, tool_result_message=agent_answer
         )
@@ -481,7 +339,6 @@ try breaking down the task into smaller steps. After call this tool to update or
         files: list[str] | None = None,
         resume: bool = False,
         orientation_instruction: str | None = None,
-        log_dir: str | None = None,
     ) -> str:
         """Start a new agent run.
 
@@ -489,11 +346,12 @@ try breaking down the task into smaller steps. After call this tool to update or
             instruction: The instruction to the agent.
             resume: Whether to resume the agent from the previous state,
                 continuing the dialog.
+            orientation_instruction: Optional orientation instruction
 
         Returns:
             A tuple of (result, message).
         """
-        self.complete_tool.reset()
+        self.tool_manager.reset()
         if resume:
             assert self.history.is_next_turn_user()
         else:
@@ -506,7 +364,7 @@ try breaking down the task into smaller steps. After call this tool to update or
         }
         if orientation_instruction:
             tool_input["orientation_instruction"] = orientation_instruction
-        return self.run(tool_input, self.history, log_dir)
+        return self.run(tool_input, self.history)
 
     def clear(self):
         """Clear the dialog and reset interruption state.

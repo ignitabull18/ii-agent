@@ -307,7 +307,7 @@ class BrowserClickTool(LLMTool):
             },
             "coordinate_x": {
                 "type": "number",
-                "description": "(Optional) X coordinate of click position"
+                "description": "(Optional) X coordinate of click position",
             },
             "coordinate_y": {
                 "type": "number",
@@ -358,7 +358,10 @@ class BrowserClickTool(LLMTool):
 
                 msg = f"Clicked element with index {index}: <{element.tag_name}></{element.tag_name}>"
 
-                if self.browser.context and len(self.browser.context.pages) > initial_pages:
+                if (
+                    self.browser.context
+                    and len(self.browser.context.pages) > initial_pages
+                ):
                     new_tab_msg = "New tab opened - switching to it"
                     msg += f" - {new_tab_msg}"
                     await self.browser.switch_to_tab(-1)
@@ -369,7 +372,7 @@ class BrowserClickTool(LLMTool):
                 msg = f"Clicked at coordinates {coordinate_x}, {coordinate_y}"
                 return ToolImplOutput(tool_output=msg, tool_result_message=msg)
             else:
-                msg = f"No index or coordinates provided"
+                msg = "No index or coordinates provided"
                 return ToolImplOutput(tool_output=msg, tool_result_message=msg)
 
         loop = get_event_loop()

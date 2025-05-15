@@ -26,7 +26,7 @@ class AudioUnderstandingTool(LLMTool):
             "prompt": {
                 "type": "string",
                 "description": "Prompt for the audio understanding",
-            }
+            },
         },
         "required": ["file_path", "prompt"],
     }
@@ -36,12 +36,9 @@ class AudioUnderstandingTool(LLMTool):
         api_key = os.environ.get("GEMINI_API_KEY", "")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable not set.")
-        self.client = genai.Client(
-            api_key=api_key
-        )
+        self.client = genai.Client(api_key=api_key)
         self.workspace_manager = workspace_manager
 
-    
     def run_impl(
         self,
         tool_input: dict[str, Any],
@@ -51,27 +48,24 @@ class AudioUnderstandingTool(LLMTool):
         prompt = tool_input["prompt"]
         model = "gemini-2.5-pro-preview-05-06"
         abs_path = str(self.workspace_manager.workspace_path(file_path))
-        with open(abs_path, 'rb') as f:
+        with open(abs_path, "rb") as f:
             audio_bytes = f.read()
         try:
             response = self.client.models.generate_content(
                 model=model,
                 contents=types.Content(
-                parts=[
-                    types.Part(text=prompt),
-                    types.Part.from_bytes(
-                        data=audio_bytes,
-                        mime_type='audio/mp3',
-                        )
+                    parts=[
+                        types.Part(text=prompt),
+                        types.Part.from_bytes(
+                            data=audio_bytes,
+                            mime_type="audio/mp3",
+                        ),
                     ]
-                )
+                ),
             )
             output = response.text
         except Exception as e:
-            output = f"Error analyzing the audio file, try again later."
+            output = "Error analyzing the audio file, try again later."
             print(e)
 
-        return ToolImplOutput(
-            output,
-            output
-        )
+        return ToolImplOutput(output, output)

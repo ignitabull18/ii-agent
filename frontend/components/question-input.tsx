@@ -23,6 +23,8 @@ interface QuestionInputProps {
   handleSubmit: (question: string) => void;
   handleFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isUploading?: boolean;
+  isUseDeepResearch?: boolean;
+  setIsUseDeepResearch?: (value: boolean) => void;
 }
 
 const QuestionInput = ({
@@ -35,6 +37,8 @@ const QuestionInput = ({
   handleSubmit,
   handleFileUpload,
   isUploading = false,
+  isUseDeepResearch = false,
+  setIsUseDeepResearch,
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
 
@@ -180,8 +184,8 @@ const QuestionInput = ({
           </div>
         )}
         <Textarea
-          className={`w-full p-4 rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#35363a] border-[#ffffff0f] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.02)] ${
-            files.length > 0 ? "pt-24 h-60" : "h-40"
+          className={`w-full p-4 pb-[72px] rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#35363a] border-[#ffffff0f] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.02)] ${
+            files.length > 0 ? "pt-24 h-60" : "h-50"
           } ${textareaClassName}`}
           placeholder={
             placeholder ||
@@ -191,32 +195,50 @@ const QuestionInput = ({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        <div className="flex w-full justify-between items-center absolute bottom-4 px-4">
-          {handleFileUpload && (
-            <label htmlFor="file-upload" className="cursor-pointer">
+        <div className="flex justify-between items-center absolute bottom-0 py-4 m-px w-[calc(100%-4px)] rounded-b-xl bg-[#35363a]  px-4">
+          <div className="flex items-center gap-x-3">
+            {handleFileUpload && (
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-gray-700/50 size-10 rounded-full cursor-pointer border border-[#ffffff0f] shadow-sm"
+                  onClick={() =>
+                    document.getElementById("file-upload")?.click()
+                  }
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <Loader2 className="size-5 text-gray-400 animate-spin" />
+                  ) : (
+                    <Paperclip className="size-5 text-gray-400" />
+                  )}
+                </Button>
+                <input
+                  id="file-upload"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                  disabled={isUploading}
+                />
+              </label>
+            )}
+            {setIsUseDeepResearch && (
               <Button
-                variant="ghost"
-                size="icon"
-                className="hover:bg-gray-700/50 size-10 rounded-full cursor-pointer border border-[#ffffff0f] shadow-sm"
-                onClick={() => document.getElementById("file-upload")?.click()}
-                disabled={isUploading}
+                variant="outline"
+                className={`h-10 cursor-pointer shadow-sm ${
+                  isUseDeepResearch
+                    ? "bg-gradient-skyblue-lavender !text-black"
+                    : "border !border-[#ffffff0f] bg-transparent"
+                }`}
+                onClick={() => setIsUseDeepResearch?.(!isUseDeepResearch)}
               >
-                {isUploading ? (
-                  <Loader2 className="size-5 text-gray-400 animate-spin" />
-                ) : (
-                  <Paperclip className="size-5 text-gray-400" />
-                )}
+                Deep Research
               </Button>
-              <input
-                id="file-upload"
-                type="file"
-                multiple
-                className="hidden"
-                onChange={handleFileChange}
-                disabled={isUploading}
-              />
-            </label>
-          )}
+            )}
+          </div>
+
           <Button
             disabled={!value.trim()}
             onClick={() => handleSubmit(value)}

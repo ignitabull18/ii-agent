@@ -53,7 +53,6 @@ class LLMTool(ABC):
         self,
         tool_input: dict[str, Any],
         message_history: Optional[MessageHistory] = None,
-        log_dir: Optional[str] = None,
     ) -> str | list[dict[str, Any]]:
         """Run the tool.
 
@@ -63,17 +62,13 @@ class LLMTool(ABC):
                 is allowed to modify this object, so the caller should make a copy
                 if that's not desired. The dialog messages should not contain
                 pending tool calls. They should end where it's the user's turn.
-            log_dir: The directory to save the log files.
         """
         if message_history:
             assert message_history.is_next_turn_user()
 
         try:
             self._validate_tool_input(tool_input)
-            if log_dir:
-                result = self.run_impl(tool_input, message_history, log_dir)
-            else:
-                result = self.run_impl(tool_input, message_history)
+            result = self.run_impl(tool_input, message_history)
             tool_output = result.tool_output
         except jsonschema.ValidationError as exc:
             tool_output = "Invalid tool input: " + exc.message
@@ -91,7 +86,6 @@ class LLMTool(ABC):
         self,
         tool_input: dict[str, Any],
         message_history: Optional[MessageHistory] = None,
-        log_dir: Optional[str] = None,
     ) -> ToolImplOutput:
         """Subclasses should implement this.
 

@@ -16,6 +16,37 @@ II Agent is built around providing an agentic interface to Anthropic Claude mode
 - Node.js 18+ (for frontend)
 - Google Cloud project with Vertex AI API enabled or Anthropic API key
 
+## Environment
+
+### Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```bash
+# Image and Video Generation Tool
+OPENAI_API_KEY=your_openai_key
+OPENAI_AZURE_ENDPOINT=your_azure_endpoint
+# Search Provider
+TAVILY_API_KEY=your_tavily_key
+#JINA_API_KEY=your_jina_key
+#FIRECRAWL_API_KEY=your_firecrawl_key
+#SERPAPI_API_KEY=your_serpapi_key
+
+STATIC_FILE_BASE_URL=http://localhost:8000/
+
+
+GOOGLE_APPLICATION_CREDENTIALS=
+```
+
+### Frontend Environment Variables
+
+For the frontend, create a `.env` file in the frontend directory:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+
 ## Installation
 
 1. Clone the repository

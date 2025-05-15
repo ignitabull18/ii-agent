@@ -38,13 +38,14 @@ Note:
         result = self.md_converter.convert(abs_path)
 
         if file_path[-4:] in [".png", ".jpg"]:
-            raise Exception("Cannot use this tool with images: use display_image instead!")
+            raise Exception(
+                "Cannot use this tool with images: use display_image instead!"
+            )
 
         if ".zip" in file_path:
             return result.text_content
 
         return result.text_content
-
 
     def run_impl(
         self,

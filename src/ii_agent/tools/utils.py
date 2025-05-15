@@ -1,7 +1,4 @@
 import base64
-import mimetypes
-import os
-import uuid
 from PIL import Image
 from io import BytesIO
 
@@ -26,7 +23,7 @@ def save_base64_image_png(base64_str: str, path: str) -> None:
     image = Image.open(BytesIO(image_data)).convert("RGBA")
     image.save(path, format="PNG")
 
-    
+
 def encode_image(image_path):
     if image_path.startswith("http"):
         user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0"
@@ -38,7 +35,7 @@ def encode_image(image_path):
         # Send a HTTP request to the URL
         response = requests.get(image_path, **request_kwargs)
         response.raise_for_status()
-        
+
         # Read image data directly from response content
         image_data = response.content
         return base64.b64encode(image_data).decode("utf-8")
@@ -46,7 +43,6 @@ def encode_image(image_path):
     # For local files, read directly into memory
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
-
 
 
 def truncate_content(

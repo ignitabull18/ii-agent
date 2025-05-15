@@ -1,9 +1,16 @@
+export enum TAB {
+  BROWSER = "browser",
+  CODE = "code",
+  TERMINAL = "terminal",
+}
+
 export type Source = {
   title: string;
   url: string;
 };
 
 export enum AgentEvent {
+  USER_MESSAGE = "user_message",
   CONNECTION_ESTABLISHED = "connection_established",
   WORKSPACE_INFO = "workspace_info",
   PROCESSING = "processing",
@@ -17,20 +24,25 @@ export enum AgentEvent {
   PONG = "pong",
   UPLOAD_SUCCESS = "upload_success",
   BROWSER_USE = "browser_use",
+  FILE_EDIT = "file_edit",
 }
 
 export enum TOOL {
   SEQUENTIAL_THINKING = "sequential_thinking",
   STR_REPLACE_EDITOR = "str_replace_editor",
   BROWSER_USE = "browser_use",
-  TAVILY_SEARCH = "tavily_web_search",
-  TAVILY_VISIT = "tavily_visit_webpage",
+  WEB_SEARCH = "web_search",
+  VISIT = "visit_webpage",
   BASH = "bash",
-  FILE_WRITE = "file_write",
   COMPLETE = "complete",
   STATIC_DEPLOY = "static_deploy",
   PDF_TEXT_EXTRACT = "pdf_text_extract",
-
+  AUDIO_TRANSCRIBE = "audio_transcribe",
+  GENERATE_AUDIO_RESPONSE = "generate_audio_response",
+  VIDEO_GENERATE = "generate_video_from_text",
+  IMAGE_GENERATE = "generate_image_from_text",
+  DEEP_RESEARCH = "deep_research",
+  // browser tools
   BROWSER_VIEW = "browser_view",
   BROWSER_NAVIGATION = "browser_navigation",
   BROWSER_RESTART = "browser_restart",
@@ -44,8 +56,6 @@ export enum TOOL {
   BROWSER_SELECT_DROPDOWN_OPTION = "browser_select_dropdown_option",
   BROWSER_SWITCH_TAB = "browser_switch_tab",
   BROWSER_OPEN_NEW_TAB = "browser_open_new_tab",
-  AUDIO_TRANSCRIBE = "audio_transcribe",
-  GENERATE_AUDIO_RESPONSE = "generate_audio_response",
 }
 
 export type ActionStep = {
@@ -54,6 +64,7 @@ export type ActionStep = {
     isResult?: boolean;
     tool_name?: string;
     tool_input?: {
+      text?: string;
       thought?: string;
       path?: string;
       file_text?: string;
@@ -64,8 +75,40 @@ export type ActionStep = {
       file?: string;
       instruction?: string;
       output_filename?: string;
+      key?: string;
     };
     result?: string | Record<string, unknown>;
     query?: string;
+    content?: string;
+    path?: string;
   };
 };
+
+export interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content?: string;
+  timestamp: number;
+  action?: ActionStep;
+  files?: string[]; // File names
+  fileContents?: { [filename: string]: string }; // Base64 content of files
+}
+
+export interface ISession {
+  id: string;
+  workspace_dir: string;
+  created_at: string;
+  device_id: string;
+  first_message: string;
+}
+
+export interface IEvent {
+  id: string;
+  event_type: AgentEvent;
+  event_payload: {
+    type: AgentEvent;
+    content: Record<string, unknown>;
+  };
+  timestamp: string;
+  workspace_dir: string;
+}

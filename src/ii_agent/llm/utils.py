@@ -40,8 +40,9 @@ def _hide_base64_image_from_tool_output(tool_output: list[dict]) -> list[dict]:
     return refined_tool_output
 
 
-
-def convert_message_to_json(message: GeneralContentBlock, hide_base64_image: bool = False) -> dict:
+def convert_message_to_json(
+    message: GeneralContentBlock, hide_base64_image: bool = False
+) -> dict:
     """Convert a GeneralContentBlock to a JSON object.
 
     Args:
@@ -73,7 +74,11 @@ def convert_message_to_json(message: GeneralContentBlock, hide_base64_image: boo
             "tool_name": message.tool_name,
         }
         if isinstance(message.tool_output, list):
-            message_json["tool_output"] = _hide_base64_image_from_tool_output(message.tool_output) if hide_base64_image else message.tool_output
+            message_json["tool_output"] = (
+                _hide_base64_image_from_tool_output(message.tool_output)
+                if hide_base64_image
+                else message.tool_output
+            )
         else:
             message_json["tool_output"] = message.tool_output
     elif str(type(message)) == str(AnthropicRedactedThinkingBlock):
@@ -104,7 +109,9 @@ def convert_message_to_json(message: GeneralContentBlock, hide_base64_image: boo
     return message_json
 
 
-def convert_message_history_to_json(messages: LLMMessages, hide_base64_image: bool = False) -> list[list[dict]]:
+def convert_message_history_to_json(
+    messages: LLMMessages, hide_base64_image: bool = False
+) -> list[list[dict]]:
     """Convert a LLMMessages object to a JSON object.
 
     Args:
@@ -118,9 +125,14 @@ def convert_message_history_to_json(messages: LLMMessages, hide_base64_image: bo
     messages_json = []
     for idx, message_list in enumerate(messages_cp):
         role = "user" if idx % 2 == 0 else "assistant"
-        message_content_list = [convert_message_to_json(message, hide_base64_image) for message in message_list]
-        messages_json.append({
-            "role": role,
-            "content": message_content_list,
-        })
+        message_content_list = [
+            convert_message_to_json(message, hide_base64_image)
+            for message in message_list
+        ]
+        messages_json.append(
+            {
+                "role": role,
+                "content": message_content_list,
+            }
+        )
     return messages_json

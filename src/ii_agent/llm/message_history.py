@@ -19,7 +19,9 @@ class MessageHistory:
     def __init__(self):
         self._message_lists: list[list[GeneralContentBlock]] = []
 
-    def add_user_prompt(self, prompt: str, image_blocks: list[dict[str, Any]] | None = None):
+    def add_user_prompt(
+        self, prompt: str, image_blocks: list[dict[str, Any]] | None = None
+    ):
         """Adds a user prompt."""
         user_turn = []
         for img_block in image_blocks:

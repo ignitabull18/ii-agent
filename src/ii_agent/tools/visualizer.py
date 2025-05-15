@@ -10,7 +10,7 @@ from .utils import encode_image
 from ii_agent.utils import WorkspaceManager
 
 
-class VisualizerTool(LLMTool):
+class DisplayImageTool(LLMTool):
     name = "display_image"
     description = "A tool that loads and displays images."
     input_schema = {
@@ -37,18 +37,18 @@ class VisualizerTool(LLMTool):
         if not isinstance(image_path, str):
             return ToolImplOutput(
                 tool_output="Error: image_path must be a string",
-                tool_result_message="Error: image_path must be a string"
+                tool_result_message="Error: image_path must be a string",
             )
 
         try:
             # Convert relative path to absolute path using workspace_manager
             abs_path = str(self.workspace_manager.workspace_path(image_path))
-            
+
             # Get mime type and encode image
             mime_type, _ = mimetypes.guess_type(abs_path)
             if not mime_type:
                 mime_type = "image/png"  # Default to PNG if type cannot be determined
-            
+
             base64_image = encode_image(abs_path)
 
             tool_output = [
@@ -61,15 +61,12 @@ class VisualizerTool(LLMTool):
                     },
                 }
             ]
-            
+
             return ToolImplOutput(
                 tool_output=tool_output,
-                tool_result_message=f"Successfully loaded image from {image_path}"
+                tool_result_message=f"Successfully loaded image from {image_path}",
             )
 
         except Exception as e:
             error_msg = f"Failed to process image: {str(e)}"
-            return ToolImplOutput(
-                tool_output=error_msg,
-                tool_result_message=error_msg
-            )
+            return ToolImplOutput(tool_output=error_msg, tool_result_message=error_msg)

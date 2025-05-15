@@ -26,7 +26,7 @@ class YoutubeVideoUnderstandingTool(LLMTool):
             "prompt": {
                 "type": "string",
                 "description": "Prompt for the video understanding",
-            }
+            },
         },
         "required": ["url", "prompt"],
     }
@@ -36,11 +36,8 @@ class YoutubeVideoUnderstandingTool(LLMTool):
         api_key = os.environ.get("GEMINI_API_KEY", "")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable not set.")
-        self.client = genai.Client(
-            api_key=api_key
-        )
+        self.client = genai.Client(api_key=api_key)
 
-    
     def run_impl(
         self,
         tool_input: dict[str, Any],
@@ -49,25 +46,20 @@ class YoutubeVideoUnderstandingTool(LLMTool):
         url = tool_input["url"]
         prompt = tool_input["prompt"]
         model = "gemini-2.5-pro-preview-05-06"
-        
+
         try:
             response = self.client.models.generate_content(
                 model=model,
                 contents=types.Content(
-                parts=[
-                    types.Part(
-                        file_data=types.FileData(file_uri=url)
-                    ),
-                    types.Part(text=prompt)
-                ]
-                )
+                    parts=[
+                        types.Part(file_data=types.FileData(file_uri=url)),
+                        types.Part(text=prompt),
+                    ]
+                ),
             )
             output = response.candidates[0].content.parts[0].text
         except Exception as e:
-            output = f"Error analyzing the Youtube video, try again later."
+            output = "Error analyzing the Youtube video, try again later."
             print(e)
 
-        return ToolImplOutput(
-            output,
-            output
-        )
+        return ToolImplOutput(output, output)
