@@ -44,6 +44,7 @@ from ii_agent.browser.utils import (
     put_highlight_elements_on_screenshot,
     scale_b64_image,
 )
+from ii_agent.browser.utils import is_pdf_url
 
 logger = logging.getLogger(__name__)
 
@@ -525,3 +526,19 @@ class Browser:
                 "cookies": cookies,
             }
         return {}
+
+    async def handle_pdf_url_navigation(self):
+        page = await self.get_current_page()
+        if is_pdf_url(page.url):
+            await asyncio.sleep(5) # Long sleep to ensure PDF is loaded
+            await page.keyboard.press("Escape")
+            await asyncio.sleep(0.1)
+            await page.keyboard.press("Control+\\")
+            await asyncio.sleep(0.1)
+            await page.mouse.click(
+                self.config.viewport_size["width"] * 0.75,  # Right side of screen
+                self.config.viewport_size["height"] * 0.25   # Upper portion
+            )
+            
+        state = await self.update_state()
+        return state
