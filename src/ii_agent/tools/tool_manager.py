@@ -14,7 +14,7 @@ from ii_agent.tools.bash_tool import create_bash_tool, create_docker_bash_tool
 from ii_agent.browser.browser import Browser
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm.message_history import MessageHistory
-from ii_agent.tools.browser_tool import (
+from ii_agent.tools.browser_tools import (
     BrowserNavigationTool,
     BrowserRestartTool,
     BrowserScrollDownTool,
@@ -96,19 +96,19 @@ def get_system_tools(
             browser = Browser()
             tools.extend(
                 [
-                    BrowserNavigationTool(browser=browser),
-                    BrowserRestartTool(browser=browser),
-                    BrowserScrollDownTool(browser=browser),
-                    BrowserScrollUpTool(browser=browser),
+                    BrowserNavigationTool(browser=browser, message_queue=message_queue),
+                    BrowserRestartTool(browser=browser, message_queue=message_queue),
+                    BrowserScrollDownTool(browser=browser, message_queue=message_queue),
+                    BrowserScrollUpTool(browser=browser, message_queue=message_queue),
                     BrowserViewTool(browser=browser, message_queue=message_queue),
-                    BrowserWaitTool(browser=browser),
-                    BrowserSwitchTabTool(browser=browser),
-                    BrowserOpenNewTabTool(browser=browser),
-                    BrowserClickTool(browser=browser),
-                    BrowserEnterTextTool(browser=browser),
-                    BrowserPressKeyTool(browser=browser),
-                    BrowserGetSelectOptionsTool(browser=browser),
-                    BrowserSelectDropdownOptionTool(browser=browser),
+                    BrowserWaitTool(browser=browser, message_queue=message_queue),
+                    BrowserSwitchTabTool(browser=browser, message_queue=message_queue),
+                    BrowserOpenNewTabTool(browser=browser, message_queue=message_queue),
+                    BrowserClickTool(browser=browser, message_queue=message_queue),
+                    BrowserEnterTextTool(browser=browser, message_queue=message_queue),
+                    BrowserPressKeyTool(browser=browser, message_queue=message_queue),
+                    BrowserGetSelectOptionsTool(browser=browser, message_queue=message_queue),
+                    BrowserSelectDropdownOptionTool(browser=browser, message_queue=message_queue),
                 ]
             )
         # Browser tools

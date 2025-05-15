@@ -1,10 +1,11 @@
 import asyncio
 
+from asyncio import Queue
+from typing import Any, Optional
 from ii_agent.browser.browser import Browser
 from ii_agent.tools.base import ToolImplOutput
 from ii_agent.tools.browser_tools import BrowserTool, utils
 from ii_agent.llm.message_history import MessageHistory
-from typing import Any, Optional
 
 
 class BrowserWaitTool(BrowserTool):
@@ -12,8 +13,8 @@ class BrowserWaitTool(BrowserTool):
     description = "Wait for the page to load"
     input_schema = {"type": "object", "properties": {}, "required": []}
 
-    def __init__(self, browser: Browser):
-        super().__init__(browser)
+    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
+        super().__init__(browser, message_queue)
 
     async def _run(
         self,
@@ -23,7 +24,7 @@ class BrowserWaitTool(BrowserTool):
         await asyncio.sleep(1)
         state = await self.browser.update_state()
         state = await self.browser.handle_pdf_url_navigation()
-        screenshot = state.screenshot
+        self.log_browser_state(state)
         msg = "Waited for page"
 
-        return utils.format_screenshot_tool_output(screenshot, msg)
+        return utils.format_screenshot_tool_output(state.screenshot, msg)

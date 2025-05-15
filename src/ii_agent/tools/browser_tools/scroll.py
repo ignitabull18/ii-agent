@@ -1,11 +1,12 @@
 import asyncio
 
+from asyncio import Queue
+from typing import Any, Optional
 from ii_agent.tools.browser_tools import BrowserTool, utils
 from ii_agent.browser.browser import Browser
 from ii_agent.browser.utils import is_pdf_url
 from ii_agent.tools.base import ToolImplOutput
 from ii_agent.llm.message_history import MessageHistory
-from typing import Any, Optional
 
 
 class BrowserScrollDownTool(BrowserTool):
@@ -13,8 +14,8 @@ class BrowserScrollDownTool(BrowserTool):
     description = "Scroll down the current browser page"
     input_schema = {"type": "object", "properties": {}, "required": []}
 
-    def __init__(self, browser: Browser):
-        super().__init__(browser)
+    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
+        super().__init__(browser, message_queue)
 
     async def _run(
         self,
@@ -34,9 +35,9 @@ class BrowserScrollDownTool(BrowserTool):
             await asyncio.sleep(0.1)
 
         state = await self.browser.update_state()
-        screenshot = state.screenshot
+        self.log_browser_state(state)
         msg = "Scrolled page down"
-        return utils.format_screenshot_tool_output(screenshot, msg)
+        return utils.format_screenshot_tool_output(state.screenshot, msg)
 
 
 class BrowserScrollUpTool(BrowserTool):
@@ -44,8 +45,8 @@ class BrowserScrollUpTool(BrowserTool):
     description = "Scroll up the current browser page"
     input_schema = {"type": "object", "properties": {}, "required": []}
 
-    def __init__(self, browser: Browser):
-        super().__init__(browser)
+    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
+        super().__init__(browser, message_queue)
 
     async def _run(
         self,
@@ -65,6 +66,6 @@ class BrowserScrollUpTool(BrowserTool):
             await asyncio.sleep(0.1)
 
         state = await self.browser.update_state()
-        screenshot = state.screenshot
+        self.log_browser_state(state)
         msg = "Scrolled page up"
-        return utils.format_screenshot_tool_output(screenshot, msg)
+        return utils.format_screenshot_tool_output(state.screenshot, msg)

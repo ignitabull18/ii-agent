@@ -1,11 +1,11 @@
-import asyncio
+import json
 
+from asyncio import Queue
+from typing import Any, Optional
 from ii_agent.browser.browser import Browser
 from ii_agent.tools.base import ToolImplOutput
 from ii_agent.tools.browser_tools import BrowserTool, utils
 from ii_agent.llm.message_history import MessageHistory
-from typing import Any, Optional
-import json
 
 
 class BrowserGetSelectOptionsTool(BrowserTool):
@@ -84,8 +84,9 @@ class BrowserGetSelectOptionsTool(BrowserTool):
         msg = "\n".join(formatted_options)
         msg += "\nIf you decide to use this select element, use the exact option name in select_dropdown_option"
         state = await self.browser.update_state()
-        screenshot = state.screenshot
-        return utils.format_screenshot_tool_output(screenshot, msg)
+        self.log_browser_state(state)
+        
+        return utils.format_screenshot_tool_output(state.screenshot, msg)
 
 
 class BrowserSelectDropdownOptionTool(BrowserTool):
@@ -106,8 +107,8 @@ class BrowserSelectDropdownOptionTool(BrowserTool):
         "required": ["index", "option"],
     }
 
-    def __init__(self, browser: Browser):
-        super().__init__(browser)
+    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
+        super().__init__(browser, message_queue)
 
     async def _run(
         self,
@@ -208,8 +209,8 @@ class BrowserSelectDropdownOptionTool(BrowserTool):
         if result.get("success"):
             msg = f"Selected option '{option}' with value '{result.get('value')}' at index {result.get('index')}"
             state = await self.browser.update_state()
-            screenshot = state.screenshot
-            return utils.format_screenshot_tool_output(screenshot, msg)
+            self.log_browser_state(state)
+            return utils.format_screenshot_tool_output(state.screenshot, msg)
         else:
             error_msg = result.get("error", "Unknown error")
             if "availableOptions" in result:

@@ -1,10 +1,11 @@
 import asyncio
 
+from asyncio import Queue
+from typing import Any, Optional
 from ii_agent.browser.browser import Browser
 from ii_agent.tools.base import ToolImplOutput
 from ii_agent.tools.browser_tools import BrowserTool, utils
 from ii_agent.llm.message_history import MessageHistory
-from typing import Any, Optional
 
 
 class BrowserPressKeyTool(BrowserTool):
@@ -21,8 +22,8 @@ class BrowserPressKeyTool(BrowserTool):
         "required": ["key"],
     }
 
-    def __init__(self, browser: Browser):
-        super().__init__(browser)
+    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
+        super().__init__(browser, message_queue)
 
     async def _run(
         self,
@@ -36,5 +37,5 @@ class BrowserPressKeyTool(BrowserTool):
 
         msg = f'Pressed "{key}" on the keyboard.'
         state = await self.browser.update_state()
-        screenshot = state.screenshot
-        return utils.format_screenshot_tool_output(screenshot, msg)
+        self.log_browser_state(state)
+        return utils.format_screenshot_tool_output(state.screenshot, msg)
