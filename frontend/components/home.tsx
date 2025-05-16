@@ -42,6 +42,7 @@ import {
   TOOL,
 } from "@/typings/agent";
 import ChatMessage from "./chat-message";
+import ImageBrowser from "./image-browser";
 
 export default function Home() {
   const xtermRef = useRef<XTerm | null>(null);
@@ -169,14 +170,13 @@ export default function Home() {
     (data: ActionStep | undefined, showTabOnly = false) => {
       if (!data) return;
 
-      // setActiveFileCodeEditor("");
-
       switch (data.type) {
         case TOOL.WEB_SEARCH:
           setActiveTab(TAB.BROWSER);
           setCurrentActionData(data);
           break;
 
+        case TOOL.IMAGE_GENERATE:
         case TOOL.BROWSER_USE:
         case TOOL.VISIT:
           setActiveTab(TAB.BROWSER);
@@ -469,6 +469,11 @@ export default function Home() {
       // Clear the input
       event.target.value = "";
     }
+  };
+
+  const getRemoteURL = (path: string | undefined) => {
+    const workspaceId = workspaceInfo.split("/").pop();
+    return `${process.env.NEXT_PUBLIC_API_URL}/workspace/${workspaceId}/${path}`;
   };
 
   const handleEvent = (data: {
@@ -932,6 +937,18 @@ export default function Home() {
                         ? parseJson(currentActionData?.data?.result as string)
                         : undefined
                     }
+                  />
+                  <ImageBrowser
+                    className={
+                      activeTab === TAB.BROWSER &&
+                      currentActionData?.type === TOOL.IMAGE_GENERATE
+                        ? ""
+                        : "hidden"
+                    }
+                    url={currentActionData?.data.tool_input?.output_filename}
+                    image={getRemoteURL(
+                      currentActionData?.data.tool_input?.output_filename
+                    )}
                   />
                   <CodeEditor
                     currentActionData={currentActionData}
