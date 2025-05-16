@@ -25,7 +25,6 @@ from ii_agent.db.models import Session, Event
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.browser.browser import Browser
 from ii_agent.prompts.gaia_system_prompt import GAIA_SYSTEM_PROMPT
-from ii_agent.tools.audio_understanding import AudioUnderstandingTool
 from ii_agent.tools.bash_tool import BashTool
 from ii_agent.tools.browser_tools import (
     BrowserClickTool,
@@ -40,13 +39,17 @@ from ii_agent.tools.browser_tools import (
     BrowserViewTool,
     BrowserWaitTool,
 )
+from ii_agent.tools.advanced_tools.gemini import (
+    AudioUnderstandingTool,
+    AudioTranscribeTool,
+    YoutubeVideoUnderstandingTool,
+)
 from ii_agent.tools.sequential_thinking_tool import SequentialThinkingTool
 from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
 from ii_agent.tools.text_inspector_tool import TextInspectorTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
 from ii_agent.tools.visualizer import DisplayImageTool
 from ii_agent.tools.web_search_tool import WebSearchTool
-from ii_agent.tools.youtube_tool import YoutubeVideoUnderstandingTool
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
 from ii_agent.llm.context_manager.standard import StandardContextManager
@@ -278,8 +281,9 @@ async def answer_single_question(
         BrowserSelectDropdownOptionTool(browser=browser),
         TextInspectorTool(workspace_manager=workspace_manager),
         DisplayImageTool(workspace_manager=workspace_manager),
-        YoutubeVideoUnderstandingTool(),
+        YoutubeVideoUnderstandingTool(workspace_manager=workspace_manager),
         AudioUnderstandingTool(workspace_manager=workspace_manager),
+        AudioTranscribeTool(workspace_manager=workspace_manager),
     ]
     
     system_prompt = GAIA_SYSTEM_PROMPT.format(
