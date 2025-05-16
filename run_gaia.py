@@ -24,10 +24,10 @@ import asyncio
 from ii_agent.db.models import Session, Event
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.browser.browser import Browser
-from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
+from ii_agent.prompts.gaia_system_prompt import GAIA_SYSTEM_PROMPT
 from ii_agent.tools.audio_understanding import AudioUnderstandingTool
 from ii_agent.tools.bash_tool import BashTool
-from ii_agent.tools.browser_tool import (
+from ii_agent.tools.browser_tools import (
     BrowserClickTool,
     BrowserEnterTextTool,
     BrowserGetSelectOptionsTool,
@@ -225,7 +225,7 @@ async def answer_single_question(
             upload_dir.mkdir(parents=True, exist_ok=True)
 
             # Copy the file to workspace
-            dest_file = upload_dir / f"file.{source_file.suffix}"
+            dest_file = upload_dir / f"file{source_file.suffix}"
             shutil.copy2(source_file, dest_file)
 
             # check if same file name but with png extension exists (replace source_file extension with png)
@@ -279,7 +279,7 @@ async def answer_single_question(
 
     # Create agent instance for this question
     agent = AnthropicFC(
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=GAIA_SYSTEM_PROMPT,
         client=client,
         tools=tools,
         workspace_manager=workspace_manager,

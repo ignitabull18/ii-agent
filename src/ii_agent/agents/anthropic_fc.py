@@ -97,7 +97,6 @@ try breaking down the task into smaller steps. After call this tool to update or
 
                     # Save all events to database if we have a session
                     if self.session_id is not None:
-                        print("Processing messages")
                         self.db_manager.save_event(self.session_id, message)
                     else:
                         self.logger_for_agent_logs.info(
