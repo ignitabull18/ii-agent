@@ -58,6 +58,7 @@ from ii_agent.utils.constants import UPLOAD_FOLDER_NAME
 from utils import parse_common_args
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.core.event import RealtimeEvent, EventType
+from ii_agent.tools.youtube_transcript_tool import YoutubeTranscriptTool
 
 # Global lock for thread-safe file appending
 append_answer_lock = Lock()
@@ -284,6 +285,7 @@ async def answer_single_question(
         YoutubeVideoUnderstandingTool(workspace_manager=workspace_manager),
         AudioUnderstandingTool(workspace_manager=workspace_manager),
         AudioTranscribeTool(workspace_manager=workspace_manager),
+        YoutubeTranscriptTool(),
     ]
     
     system_prompt = GAIA_SYSTEM_PROMPT.format(
