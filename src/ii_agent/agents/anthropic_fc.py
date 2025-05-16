@@ -150,7 +150,9 @@ try breaking down the task into smaller steps. After call this tool to update or
             # First, list all attached files
             instruction = f"""{instruction}\n\nAttached files:\n"""
             for file in files:
-                instruction += f" - {file}\n"  # TODO: convert to relative path
+                relative_path = self.workspace_manager.relative_path(file)
+                instruction += f" - {relative_path}\n"
+                self.logger_for_agent_logs.info(f"Attached file: {relative_path}")
 
             # Then process images for image blocks
             for file in files:

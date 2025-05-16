@@ -41,7 +41,7 @@ from ii_agent.tools.browser_tools import (
     BrowserWaitTool,
 )
 from ii_agent.tools.sequential_thinking_tool import SequentialThinkingTool
-from ii_agent.tools.str_replace_tool import StrReplaceEditorTool
+from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
 from ii_agent.tools.text_inspector_tool import TextInspectorTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
 from ii_agent.tools.visualizer import DisplayImageTool
@@ -200,8 +200,12 @@ async def answer_single_question(
             session.query(Session).filter(Session.id == str(session_id)).delete()
             logger.info(f"Removed old session and events for {session_id}")
             # remove all files in workspace
-            for file in workspace_path.iterdir():
-                file.unlink()
+            try:
+                shutil.rmtree(workspace_path, ignore_errors=True)
+                workspace_path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Cleaned up and recreated workspace directory: {workspace_path}")
+            except Exception as e:
+                logger.warning(f"Error during workspace cleanup: {e}. Continuing anyway...")
 
     try:
         db_manager.create_session(
@@ -239,7 +243,8 @@ async def answer_single_question(
             logger.info(f"Copied file {source_file} to {dest_file}")
 
             # Update file path in example to point to workspace
-            example["file_name"] = str(dest_file)
+            # convert dest_file to absolute path  
+            example["file_name"] = str(dest_file.absolute())
         else:
             logger.warning(f"Source file not found: {source_file}")
 
@@ -276,10 +281,14 @@ async def answer_single_question(
         YoutubeVideoUnderstandingTool(),
         AudioUnderstandingTool(workspace_manager=workspace_manager),
     ]
+    
+    system_prompt = GAIA_SYSTEM_PROMPT.format(
+        workspace_root=".",
+    )
 
     # Create agent instance for this question
     agent = AnthropicFC(
-        system_prompt=GAIA_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         client=client,
         tools=tools,
         workspace_manager=workspace_manager,

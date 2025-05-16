@@ -207,7 +207,7 @@ Notes for using the `str_replace` command:\n
                 RealtimeEvent(
                     type=EventType.FILE_EDIT,
                     content={
-                        "path": str(path),
+                        "path": str(self.workspace_manager.relative_path(path)),
                         "content": content,
                         "total_lines": len(content.splitlines()),
                     },
@@ -228,16 +228,14 @@ Notes for using the `str_replace` command:\n
         insert_line = tool_input.get("insert_line")
 
         try:
-            _ws_path = self.workspace_manager.workspace_path(Path(path).absolute())
+            _ws_path = self.workspace_manager.workspace_path(Path(path))
             self.validate_path(command, _ws_path)
 
-            container_root = self.workspace_manager.container_path(
-                self.workspace_manager.root
-            )
             if not is_path_in_directory(self.workspace_manager.root, _ws_path):
+                rel_path = self.workspace_manager.relative_path(_ws_path)
                 return ExtendedToolImplOutput(
-                    f"Path {_ws_path} is outside the workspace root directory: {container_root}. You can only access files within the workspace root directory.",
-                    f"Path {_ws_path} is outside the workspace root directory: {container_root}. You can only access files within the workspace root directory.",
+                    f"Path {rel_path} is outside the workspace root directory. You can only access files within the workspace root directory.",
+                    f"Path {rel_path} is outside the workspace root directory. You can only access files within the workspace root directory.",
                     {"success": False},
                 )
             if command == "view":
@@ -249,9 +247,10 @@ Notes for using the `str_replace` command:\n
                     )
                 self.write_file(_ws_path, file_text)
                 self._file_history[_ws_path].append(file_text)
+                rel_path = self.workspace_manager.relative_path(_ws_path)
                 return ExtendedToolImplOutput(
-                    f"File created successfully at: {self.workspace_manager.container_path(path)}",
-                    f"File created successfully at: {self.workspace_manager.container_path(path)}",
+                    f"File created successfully at: {rel_path}",
+                    f"File created successfully at: {rel_path}",
                     {"success": True},
                 )
             elif command == "str_replace":
@@ -265,9 +264,10 @@ Notes for using the `str_replace` command:\n
                     try:
                         return self.str_replace(_ws_path, old_str, new_str)
                     except PermissionError:
+                        rel_path = self.workspace_manager.relative_path(_ws_path)
                         return ExtendedToolImplOutput(
-                            f"The file {path} could not be edited due to lack of permission. Try changing the file permissions.",
-                            f"The file {path} could not be edited due to lack of permission. Try changing the file permissions.",
+                            f"The file {rel_path} could not be edited due to lack of permission. Try changing the file permissions.",
+                            f"The file {rel_path} could not be edited due to lack of permission. Try changing the file permissions.",
                             {"success": True},
                         )
             elif command == "insert":
@@ -298,20 +298,23 @@ Notes for using the `str_replace` command:\n
         """
         # Check if path exists
         if not path.exists() and command != "create":
+            rel_path = self.workspace_manager.relative_path(path)
             raise ToolError(
-                f"The path {path} does not exist. Please provide a valid path."
+                f"The path {rel_path} does not exist. Please provide a valid path."
             )
         if path.exists() and command == "create":
             content = self.read_file(path)
             if content.strip():
+                rel_path = self.workspace_manager.relative_path(path)
                 raise ToolError(
-                    f"File already exists and is not empty at: {path}. Cannot overwrite non empty files using command `create`."
+                    f"File already exists and is not empty at: {rel_path}. Cannot overwrite non empty files using command `create`."
                 )
         # Check if the path points to a directory
         if path.is_dir():
             if command != "view":
+                rel_path = self.workspace_manager.relative_path(path)
                 raise ToolError(
-                    f"The path {path} is a directory and only the `view` command can be used on directories"
+                    f"The path {rel_path} is a directory and only the `view` command can be used on directories"
                 )
 
     def view(
@@ -325,7 +328,8 @@ Notes for using the `str_replace` command:\n
 
             _, stdout, stderr = run_sync(rf"find {path} -maxdepth 2 -not -path '*/\.*'")
             if not stderr:
-                output = f"Here's the files and directories up to 2 levels deep in {path}, excluding hidden items:\n{stdout}\n"
+                rel_path = self.workspace_manager.relative_path(path)
+                output = f"Here's the files and directories up to 2 levels deep in {rel_path}, excluding hidden items:\n{stdout}\n"
             else:
                 output = f"stderr: {stderr}\nstdout: {stdout}\n"
             return ExtendedToolImplOutput(
@@ -364,7 +368,7 @@ Notes for using the `str_replace` command:\n
 
         output = self._make_output(
             file_content=file_content,
-            file_descriptor=str(self.workspace_manager.container_path(path)),
+            file_descriptor=str(self.workspace_manager.relative_path(path)),
             total_lines=len(
                 file_lines
             ),  # Use total lines in file, not just the viewed range
@@ -417,8 +421,9 @@ Notes for using the `str_replace` command:\n
                 matches.append(i)
 
         if not matches:
+            rel_path = self.workspace_manager.relative_path(path)
             raise ToolError(
-                f"No replacement was performed, old_str \n ```\n{old_str}\n```\n did not appear in {self.workspace_manager.container_path(path)}."
+                f"No replacement was performed, old_str \n ```\n{old_str}\n```\n did not appear in {rel_path}."
             )
         if len(matches) > 1:
             # Add 1 to convert to 1-based line numbers for error message
@@ -457,10 +462,11 @@ Notes for using the `str_replace` command:\n
         snippet = "\n".join(new_content[start_line : end_line + 1])
 
         # Prepare the success message
-        success_msg = f"The file {path} has been edited. "
+        rel_path = self.workspace_manager.relative_path(path)
+        success_msg = f"The file {rel_path} has been edited. "
         success_msg += self._make_output(
             file_content=snippet,
-            file_descriptor=f"a snippet of {self.workspace_manager.container_path(path)}",
+            file_descriptor=f"a snippet of {rel_path}",
             total_lines=len(new_content),
             init_line=start_line + 1,
         )
@@ -468,7 +474,7 @@ Notes for using the `str_replace` command:\n
 
         return ExtendedToolImplOutput(
             success_msg,
-            f"The file {path} has been edited.",
+            f"The file {rel_path} has been edited.",
             {"success": True},
         )
 
@@ -486,8 +492,9 @@ Notes for using the `str_replace` command:\n
 
         if not old_str.strip():
             if content.strip():
+                rel_path = self.workspace_manager.relative_path(path)
                 raise ToolError(
-                    f"No replacement was performed, old_str is empty which is only allowed when the file is empty. The file {path} is not empty."
+                    f"No replacement was performed, old_str is empty which is only allowed when the file is empty. The file {rel_path} is not empty."
                 )
             else:
                 # replace the whole file with new_str
@@ -496,25 +503,27 @@ Notes for using the `str_replace` command:\n
                 path.write_text(new_content)
                 self._send_file_update(path, new_content)  # Send update after write
                 # Prepare the success message
-                success_msg = f"The file {path} has been edited. "
+                rel_path = self.workspace_manager.relative_path(path)
+                success_msg = f"The file {rel_path} has been edited. "
                 success_msg += self._make_output(
                     file_content=new_content,
-                    file_descriptor=f"{self.workspace_manager.container_path(path)}",
+                    file_descriptor=f"{rel_path}",
                     total_lines=len(new_content.split("\n")),
                 )
                 success_msg += "Review the changes and make sure they are as expected. Edit the file again if necessary."
 
                 return ExtendedToolImplOutput(
                     success_msg,
-                    f"The file {path} has been edited.",
+                    f"The file {rel_path} has been edited.",
                     {"success": True},
                 )
 
         occurrences = content.count(old_str)
 
         if occurrences == 0:
+            rel_path = self.workspace_manager.relative_path(path)
             raise ToolError(
-                f"No replacement was performed, old_str \n ```\n{old_str}\n```\n did not appear verbatim in {path}."
+                f"No replacement was performed, old_str \n ```\n{old_str}\n```\n did not appear verbatim in {rel_path}."
             )
         elif occurrences > 1:
             file_content_lines = content.split("\n")
@@ -539,10 +548,11 @@ Notes for using the `str_replace` command:\n
         snippet = "\n".join(new_content.split("\n")[start_line : end_line + 1])
 
         # Prepare the success message
-        success_msg = f"The file {path} has been edited. "
+        rel_path = self.workspace_manager.relative_path(path)
+        success_msg = f"The file {rel_path} has been edited. "
         success_msg += self._make_output(
             file_content=snippet,
-            file_descriptor=f"a snippet of {self.workspace_manager.container_path(path)}",
+            file_descriptor=f"a snippet of {rel_path}",
             total_lines=len(new_content.split("\n")),
             init_line=start_line + 1,
         )
@@ -550,7 +560,7 @@ Notes for using the `str_replace` command:\n
 
         return ExtendedToolImplOutput(
             success_msg,
-            f"The file {path} has been edited.",
+            f"The file {rel_path} has been edited.",
             {"success": True},
         )
 
@@ -589,7 +599,8 @@ Notes for using the `str_replace` command:\n
         self._file_history[path].append(file_text)
         self._send_file_update(path, new_file_text)  # Send update after write
 
-        success_msg = f"The file {path} has been edited. "
+        rel_path = self.workspace_manager.relative_path(path)
+        success_msg = f"The file {rel_path} has been edited. "
         success_msg += self._make_output(
             file_content=snippet,
             file_descriptor="a snippet of the edited file",
@@ -607,18 +618,20 @@ Notes for using the `str_replace` command:\n
     def undo_edit(self, path: Path) -> ExtendedToolImplOutput:
         """Implement the undo_edit command."""
         if not self._file_history[path]:
-            raise ToolError(f"No edit history found for {path}.")
+            rel_path = self.workspace_manager.relative_path(path)
+            raise ToolError(f"No edit history found for {rel_path}.")
 
         old_text = self._file_history[path].pop()
         self.write_file(path, old_text)
         self._send_file_update(path, old_text)  # Send update after undo
 
+        rel_path = self.workspace_manager.relative_path(path)
         formatted_file = self._make_output(
             file_content=old_text,
-            file_descriptor=str(self.workspace_manager.container_path(path)),
+            file_descriptor=str(rel_path),
             total_lines=len(old_text.split("\n")),
         )
-        output = f"Last edit to {path} undone successfully.\n{formatted_file}"
+        output = f"Last edit to {rel_path} undone successfully.\n{formatted_file}"
 
         return ExtendedToolImplOutput(
             output,
@@ -631,7 +644,8 @@ Notes for using the `str_replace` command:\n
         try:
             return path.read_text()
         except Exception as e:
-            raise ToolError(f"Ran into {e} while trying to read {path}") from None
+            rel_path = self.workspace_manager.relative_path(path)
+            raise ToolError(f"Ran into {e} while trying to read {rel_path}") from None
 
     def write_file(self, path: Path, file: str):
         """Write the content of a file to a given path; raise a ToolError if an error occurs."""
@@ -639,7 +653,8 @@ Notes for using the `str_replace` command:\n
             path.write_text(file)
             self._send_file_update(path, file)  # Send update after write
         except Exception as e:
-            raise ToolError(f"Ran into {e} while trying to write to {path}") from None
+            rel_path = self.workspace_manager.relative_path(path)
+            raise ToolError(f"Ran into {e} while trying to write to {rel_path}") from None
 
     def _make_output(
         self,

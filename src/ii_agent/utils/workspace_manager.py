@@ -31,3 +31,14 @@ class WorkspaceManager:
         if self.container_workspace and path.is_relative_to(self.root):
             return self.container_workspace / path.relative_to(self.root)
         return path
+
+    def relative_path(self, path: Path | str) -> Path:
+        """Given a path, return the relative path from the workspace root.
+        If the path is not under the workspace root, returns the absolute path.
+        """
+        path = Path(path)
+        abs_path = self.workspace_path(path.absolute())
+        try:
+            return abs_path.relative_to(self.root.absolute())
+        except ValueError:
+            return abs_path
