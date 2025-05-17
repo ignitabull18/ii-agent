@@ -106,6 +106,12 @@ def parse_args():
         default=None,
         help="Ending index in the dataset (exclusive). If not specified, runs until the end of dataset",
     )
+    parser.add_argument(
+        "--task-uuid",
+        type=str,
+        nargs="+",
+        help="Specify one or more task UUIDs to run only those specific tasks",
+    )
 
     return parser.parse_args()
 
@@ -238,7 +244,7 @@ async def answer_single_question(
 
             # check if same file name but with png extension exists (replace source_file extension with png)
             png_file = source_file.with_suffix(".png")
-            if png_file.exists():
+            if png_file.exists() and source_file.suffix != ".png":
                 # copy png file to workspace
                 dest_png_file = upload_dir / "file.png"
                 shutil.copy2(png_file, dest_png_file)
@@ -423,22 +429,30 @@ def main():
     print("Loaded evaluation dataset:")
     print(pd.DataFrame(eval_ds)["task"].value_counts())
 
-    # Slice dataset based on start and end indices
-    if args.end_index is None:
-        args.end_index = len(eval_ds)
-    if (
-        args.start_index < 0
-        or args.end_index > len(eval_ds)
-        or args.start_index >= args.end_index
-    ):
-        raise ValueError(
-            f"Invalid range: start_index={args.start_index}, end_index={args.end_index}, dataset_size={len(eval_ds)}"
-        )
+    # If task_uuid is provided, filter dataset to only those tasks
+    if args.task_uuid:
+        eval_ds = eval_ds.filter(lambda x: x["task_id"] in args.task_uuid)
+        print("Length of eval_ds: ", len(eval_ds))
+        if len(eval_ds) == 0:
+            raise ValueError(f"No tasks found with UUIDs {args.task_uuid}")
+        print(f"Running {len(eval_ds)} tasks with UUIDs: {args.task_uuid}")
+    else:
+        # Slice dataset based on start and end indices
+        if args.end_index is None:
+            args.end_index = len(eval_ds)
+        if (
+            args.start_index < 0
+            or args.end_index > len(eval_ds)
+            or args.start_index >= args.end_index
+        ):
+            raise ValueError(
+                f"Invalid range: start_index={args.start_index}, end_index={args.end_index}, dataset_size={len(eval_ds)}"
+            )
 
-    eval_ds = eval_ds.select(range(args.start_index, args.end_index))
-    print(
-        f"Running evaluation on examples {args.start_index} to {args.end_index - 1} (total: {len(eval_ds)} examples)"
-    )
+        eval_ds = eval_ds.select(range(args.start_index, args.end_index))
+        print(
+            f"Running evaluation on examples {args.start_index} to {args.end_index - 1} (total: {len(eval_ds)} examples)"
+        )
 
     answers_file = f"output/{args.set_to_run}/{args.run_name}.jsonl"
     tasks_to_run = get_examples_to_answer(answers_file, eval_ds)

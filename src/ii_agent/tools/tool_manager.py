@@ -29,6 +29,7 @@ from ii_agent.tools.browser_tools import (
     BrowserGetSelectOptionsTool,
     BrowserSelectDropdownOptionTool,
 )
+from copy import deepcopy
 
 from ii_agent.tools.advanced_tools.audio_tool import (
     AudioTranscribeTool,
@@ -180,7 +181,11 @@ class AgentToolManager:
         if isinstance(result, str):
             log_message += f"\nTool output: \n{result}\n\n"
         else:
-            log_message += f"\nTool output: \n{result[0]}\n\n"
+            result_to_log = deepcopy(result)
+            for i in range(len(result_to_log)):
+                if result_to_log[i].get("type") == "image":
+                    result_to_log[i]["source"]["data"] = "[REDACTED]"
+            log_message += f"\nTool output: \n{result_to_log}\n\n"
 
         self.logger_for_agent_logs.info(log_message)
 
