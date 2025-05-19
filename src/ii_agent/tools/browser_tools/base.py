@@ -1,7 +1,7 @@
 import asyncio
 
 from asyncio import Queue
-from typing import Optional
+from typing import Any, Optional
 from ii_agent.tools.base import (
     LLMTool,
     ToolImplOutput,
@@ -9,7 +9,6 @@ from ii_agent.tools.base import (
 from ii_agent.browser.browser import Browser, BrowserState
 from ii_agent.llm.message_history import MessageHistory
 from ii_agent.core.event import EventType, RealtimeEvent
-from typing import Any, Optional
 
 
 def get_event_loop():
@@ -21,23 +20,6 @@ def get_event_loop():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop
-
-
-def format_screenshot_tool_output(screenshot: str, msg: str) -> ToolImplOutput:
-    return ToolImplOutput(
-        tool_output=[
-            {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": screenshot,
-                },
-            },
-            {"type": "text", "text": msg},
-        ],
-        tool_result_message=msg,
-    )
 
 
 class BrowserTool(LLMTool):
