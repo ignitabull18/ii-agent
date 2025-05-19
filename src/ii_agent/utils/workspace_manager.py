@@ -37,7 +37,7 @@ class WorkspaceManager:
         If the path is not under the workspace root, returns the absolute path.
         """
         path = Path(path)
-        abs_path = self.workspace_path(path.absolute())
+        abs_path = self.workspace_path(path)
         try:
             return abs_path.relative_to(self.root.absolute())
         except ValueError:
