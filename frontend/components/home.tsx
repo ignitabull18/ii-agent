@@ -68,6 +68,7 @@ export default function Home() {
   const [filesContent, setFilesContent] = useState<{ [key: string]: string }>(
     {}
   );
+  const [browserUrl, setBrowserUrl] = useState("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
 
@@ -197,6 +198,7 @@ export default function Home() {
         case TOOL.BROWSER_SCROLL_DOWN:
         case TOOL.BROWSER_SCROLL_UP:
           setActiveTab(TAB.BROWSER);
+          setCurrentActionData(data);
           break;
 
         case TOOL.BASH:
@@ -534,6 +536,11 @@ export default function Home() {
             },
             timestamp: Date.now(),
           };
+          const url = (data.content.tool_input as { url: string })
+            ?.url as string;
+          if (url) {
+            setBrowserUrl(url);
+          }
           setMessages((prev) => [...prev, message]);
           handleClickAction(message.action);
         }
@@ -569,44 +576,25 @@ export default function Home() {
         break;
 
       case AgentEvent.BROWSER_USE:
-        const message: Message = {
-          id: data.id,
-          role: "assistant",
-          action: {
-            type: data.type as unknown as TOOL,
-            data: {
-              result: data.content.screenshot as string,
-              tool_input: {
-                url: data.content.url as string,
-              },
-            },
-          },
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => [...prev, message]);
-        handleClickAction(message.action);
+        // const message: Message = {
+        //   id: data.id,
+        //   role: "assistant",
+        //   action: {
+        //     type: data.type as unknown as TOOL,
+        //     data: {
+        //       result: data.content.screenshot as string,
+        //       tool_input: {
+        //         url: data.content.url as string,
+        //       },
+        //     },
+        //   },
+        //   timestamp: Date.now(),
+        // };
+        // setMessages((prev) => [...prev, message]);
+        // handleClickAction(message.action);
         break;
 
       case AgentEvent.TOOL_RESULT:
-        if (
-          [
-            TOOL.BROWSER_VIEW,
-            TOOL.BROWSER_CLICK,
-            TOOL.BROWSER_ENTER_TEXT,
-            TOOL.BROWSER_PRESS_KEY,
-            TOOL.BROWSER_GET_SELECT_OPTIONS,
-            TOOL.BROWSER_SELECT_DROPDOWN_OPTION,
-            TOOL.BROWSER_SWITCH_TAB,
-            TOOL.BROWSER_OPEN_NEW_TAB,
-            TOOL.BROWSER_WAIT,
-            TOOL.BROWSER_SCROLL_DOWN,
-            TOOL.BROWSER_SCROLL_UP,
-            TOOL.BROWSER_NAVIGATION,
-            TOOL.BROWSER_RESTART,
-          ].includes(data.content.tool_name as TOOL)
-        ) {
-          break;
-        }
         if (data.content.tool_name === TOOL.BROWSER_USE) {
           setMessages((prev) => [
             ...prev,
@@ -626,6 +614,30 @@ export default function Home() {
                 lastMessage.action?.type === data.content.tool_name
               ) {
                 lastMessage.action.data.result = `${data.content.result}`;
+                if (
+                  [
+                    TOOL.BROWSER_VIEW,
+                    TOOL.BROWSER_CLICK,
+                    TOOL.BROWSER_ENTER_TEXT,
+                    TOOL.BROWSER_PRESS_KEY,
+                    TOOL.BROWSER_GET_SELECT_OPTIONS,
+                    TOOL.BROWSER_SELECT_DROPDOWN_OPTION,
+                    TOOL.BROWSER_SWITCH_TAB,
+                    TOOL.BROWSER_OPEN_NEW_TAB,
+                    TOOL.BROWSER_WAIT,
+                    TOOL.BROWSER_SCROLL_DOWN,
+                    TOOL.BROWSER_SCROLL_UP,
+                    TOOL.BROWSER_NAVIGATION,
+                    TOOL.BROWSER_RESTART,
+                  ].includes(data.content.tool_name as TOOL)
+                ) {
+                  lastMessage.action.data.result =
+                    data.content.result && Array.isArray(data.content.result)
+                      ? data.content.result.find(
+                          (item) => item.type === "image"
+                        )?.source?.data
+                      : undefined;
+                }
                 lastMessage.action.data.isResult = true;
                 setTimeout(() => {
                   handleClickAction(lastMessage.action);
@@ -743,6 +755,26 @@ export default function Home() {
       }
     };
   }, [deviceId, isReplayMode]);
+
+  const isBrowserTool = useMemo(
+    () =>
+      [
+        TOOL.BROWSER_VIEW,
+        TOOL.BROWSER_CLICK,
+        TOOL.BROWSER_ENTER_TEXT,
+        TOOL.BROWSER_PRESS_KEY,
+        TOOL.BROWSER_GET_SELECT_OPTIONS,
+        TOOL.BROWSER_SELECT_DROPDOWN_OPTION,
+        TOOL.BROWSER_SWITCH_TAB,
+        TOOL.BROWSER_OPEN_NEW_TAB,
+        TOOL.BROWSER_WAIT,
+        TOOL.BROWSER_SCROLL_DOWN,
+        TOOL.BROWSER_SCROLL_UP,
+        TOOL.BROWSER_NAVIGATION,
+        TOOL.BROWSER_RESTART,
+      ].includes(currentActionData?.type as TOOL),
+    [currentActionData]
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -906,14 +938,13 @@ export default function Home() {
                   <Browser
                     className={
                       activeTab === TAB.BROWSER &&
-                      (currentActionData?.type === TOOL.VISIT ||
-                        currentActionData?.type === TOOL.BROWSER_USE)
+                      (currentActionData?.type === TOOL.VISIT || isBrowserTool)
                         ? ""
                         : "hidden"
                     }
-                    url={currentActionData?.data?.tool_input?.url}
+                    url={currentActionData?.data?.tool_input?.url || browserUrl}
                     screenshot={
-                      currentActionData?.type === TOOL.BROWSER_USE
+                      isBrowserTool
                         ? (currentActionData?.data.result as string)
                         : undefined
                     }
