@@ -11,6 +11,7 @@ import copy
 from ii_agent.tools import TOOLS_NEED_INPUT_TRUNCATION, TOOLS_NEED_OUTPUT_FILE_SAVE
 from ii_agent.tools.deep_research_tool import DeepResearchTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
+from ii_agent.utils.workspace_manager import WorkspaceManager
 
 HASH_LENGTH = 10
 
@@ -22,11 +23,11 @@ class FileBasedContextManager(ContextManager):
     TRUNCATED_TOOL_INPUT_MSG = (
         "[Truncated...re-run tool if you need to see input/output again.]"
     )
-    TRUNCATED_FILE_MSG = "[Truncated...content saved to {filename}. You can view it in the {agent_memory_dir} directory if needed.]"
+    TRUNCATED_FILE_MSG = "[Truncated...content saved to {relative_path}. You can view it if needed.]"
 
     def __init__(
         self,
-        workspace_dir: Path,
+        workspace_manager: WorkspaceManager,
         token_counter: TokenCounter,
         logger: logging.Logger,
         token_budget: int = 120_000,
@@ -44,7 +45,8 @@ class FileBasedContextManager(ContextManager):
         """
         super().__init__(token_counter, logger, token_budget)
         self.hash_map = {}
-        self.agent_memory_dir = workspace_dir / "agent_memory"
+        self.workspace_manager = workspace_manager
+        self.agent_memory_dir = workspace_manager.workspace_path(Path("agent_memory"))
         self.truncate_keep_n_turns = truncate_keep_n_turns
         self.min_length_to_truncate = min_length_to_truncate
         os.makedirs(self.agent_memory_dir, exist_ok=True)
@@ -109,9 +111,12 @@ class FileBasedContextManager(ContextManager):
                             content_hash = self._get_content_hash(message.tool_output)
                             if message.tool_name == VisitWebpageTool.name:
                                 # NOTE: assume that the previous message is a tool call
-                                url = truncated_message_lists[turn_idx - 1][
-                                    0
-                                ].tool_input.get("url", "unknown_url")
+                                previous_message = truncated_message_lists[turn_idx - 1][0]
+                                if isinstance(previous_message, ToolCall):
+                                    url = previous_message.tool_input.get("url", "unknown_url")
+                                else:
+                                    url = "unknown_url"
+                                    print(f"Previous message is not a tool call: {previous_message}")
                                 filename = self._generate_filename_from_url(
                                     url, content_hash
                                 )
@@ -138,8 +143,7 @@ class FileBasedContextManager(ContextManager):
 
                             # Update message with reference to file
                             message.tool_output = self.TRUNCATED_FILE_MSG.format(
-                                filename=filename,
-                                agent_memory_dir=self.agent_memory_dir,
+                                relative_path=self.workspace_manager.relative_path(filepath),
                             )
                             self.logger.info(f"Saved {filename} to {filepath}")
                         else:

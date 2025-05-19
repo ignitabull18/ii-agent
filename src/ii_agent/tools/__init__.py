@@ -1,5 +1,5 @@
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
-from ii_agent.tools.str_replace_tool import StrReplaceEditorTool
+from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
 from ii_agent.tools.sequential_thinking_tool import SequentialThinkingTool
 from ii_agent.tools.bash_tool import BashTool
 from ii_agent.tools.tool_manager import get_system_tools, AgentToolManager

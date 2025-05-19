@@ -6,7 +6,7 @@ from ii_agent.tools.base import LLMTool
 from ii_agent.llm.message_history import ToolCallParameters
 from ii_agent.tools.web_search_tool import WebSearchTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
-from ii_agent.tools.str_replace_tool import StrReplaceEditorTool
+from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
 from ii_agent.tools.static_deploy_tool import StaticDeployTool
 from ii_agent.tools.sequential_thinking_tool import SequentialThinkingTool
 from ii_agent.tools.complete_tool import CompleteTool
@@ -111,7 +111,7 @@ def get_system_tools(
                     BrowserClickTool(browser=browser, message_queue=message_queue),
                     BrowserEnterTextTool(browser=browser, message_queue=message_queue),
                     BrowserPressKeyTool(browser=browser, message_queue=message_queue),
-                    BrowserGetSelectOptionsTool(browser=browser, message_queue=message_queue),
+                    BrowserGetSelectOptionsTool(browser=browser),
                     BrowserSelectDropdownOptionTool(browser=browser, message_queue=message_queue),
                 ]
             )

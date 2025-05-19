@@ -352,7 +352,7 @@ def create_agent_for_connection(
     # Create context manager based on argument
     if global_args.context_manager == "file-based":
         context_manager = FileBasedContextManager(
-            workspace_dir=workspace_manager.root,
+            workspace_manager=workspace_manager,
             token_counter=token_counter,
             logger=logger_for_agent_logs,
             token_budget=120_000,
@@ -365,9 +365,6 @@ def create_agent_for_connection(
         )
 
     # Initialize agent with websocket
-    system_prompt = SYSTEM_PROMPT.format(
-        workspace_root=workspace_manager.root,
-    )
     queue = asyncio.Queue()
     tools = get_system_tools(
         workspace_manager=workspace_manager,
@@ -377,7 +374,7 @@ def create_agent_for_connection(
         tool_args=tool_args,
     )
     agent = AnthropicFC(
-        system_prompt=system_prompt,
+        system_prompt=SYSTEM_PROMPT,
         client=client,
         tools=tools,
         workspace_manager=workspace_manager,

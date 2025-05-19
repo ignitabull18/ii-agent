@@ -294,9 +294,7 @@ async def answer_single_question(
         YoutubeTranscriptTool(),
     ]
     
-    system_prompt = GAIA_SYSTEM_PROMPT.format(
-        workspace_root=".",
-    )
+    system_prompt = GAIA_SYSTEM_PROMPT
 
     # Create agent instance for this question
     agent = AnthropicFC(

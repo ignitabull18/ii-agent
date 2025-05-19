@@ -34,7 +34,7 @@ def test_successful_command():
         workspace_root=Path("/tmp"),
         require_confirmation=False,
     )
-    with patch("tools.bash_tool.run_command") as mock_run_command:
+    with patch("ii_agent.tools.bash_tool.run_command") as mock_run_command:
         # Mock a successful command execution
         mock_run_command.return_value = "Command output"
 
@@ -55,7 +55,7 @@ def test_failed_command():
         workspace_root=Path("/tmp"),
         require_confirmation=False,
     )
-    with patch("tools.bash_tool.run_command") as mock_run_command:
+    with patch("ii_agent.tools.bash_tool.run_command") as mock_run_command:
         # Mock a failed command execution that raises an exception
         mock_run_command.side_effect = Exception("Command failed")
 
@@ -80,7 +80,7 @@ def test_command_with_exception():
         workspace_root=Path("/tmp"),
         require_confirmation=False,
     )
-    with patch("tools.bash_tool.run_command") as mock_run_command:
+    with patch("ii_agent.tools.bash_tool.run_command") as mock_run_command:
         # Mock an exception during command execution
         mock_run_command.side_effect = Exception("Test exception")
 
@@ -106,6 +106,46 @@ def test_get_tool_start_message():
     message = bash_tool.get_tool_start_message({"command": "echo hello"})
     assert message == "Executing bash command: echo hello"
 
+
+def test_directory_change_persistence():
+    """Test that directory changes persist between commands and affect subsequent operations."""
+    # Create a temporary directory for testing
+    import tempfile
+    import os
+    from pathlib import Path
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a subdirectory and some test files
+        test_dir = Path(temp_dir) / "test_dir"
+        test_dir.mkdir()
+        (test_dir / "test.txt").write_text("test content")
+        
+        # Initialize bash tool in the temp directory
+        bash_tool = BashTool(
+            workspace_root=Path(temp_dir),
+            require_confirmation=False,
+        )
+        
+        # First command: cd into the subdirectory
+        result1 = bash_tool.run_impl({"command": f"cd {test_dir.name} && pwd"})
+        assert "test_dir" in result1.tool_output
+        assert result1.auxiliary_data["success"] is True
+        
+        # Second command: try to list the directory from current location
+        result2 = bash_tool.run_impl({"command": "ls -la"})
+        assert "test.txt" in result2.tool_output
+        assert result2.auxiliary_data["success"] is True
+        
+        # Third command: try to access the directory from parent
+        result3 = bash_tool.run_impl({"command": f"cd .. && ls -la {test_dir.name}"})
+        assert "test.txt" in result3.tool_output
+        assert result3.auxiliary_data["success"] is True
+        
+        # Fourth command: verify we're in parent directory
+        result4 = bash_tool.run_impl({"command": "pwd"})
+        print("Output: ", result4.tool_output)
+        assert str(test_dir.parent) in result4.tool_output and "test_dir" not in result4.tool_output
+        assert result4.auxiliary_data["success"] is True
 
 class MockCommandFilter(CommandFilter):
     """Mock command filter for testing."""
@@ -134,11 +174,11 @@ class BashToolTest(unittest.TestCase):
 
         # Create patches
         self.start_shell_patch = patch(
-            "tools.bash_tool.start_persistent_shell",
+            "ii_agent.tools.bash_tool.start_persistent_shell",
             return_value=(self.mock_child, self.mock_prompt),
         )
         self.run_command_patch = patch(
-            "tools.bash_tool.run_command",
+            "ii_agent.tools.bash_tool.run_command",
             return_value="command output",
         )
 
@@ -347,7 +387,7 @@ class BashToolTest(unittest.TestCase):
     def test_create_bash_tool(self):
         """Test the create_bash_tool factory function."""
 
-        with patch("tools.bash_tool.BashTool") as mock_bash_tool:
+        with patch("ii_agent.tools.bash_tool.BashTool") as mock_bash_tool:
             _ = create_bash_tool(
                 ask_user_permission=True,
                 cwd=self.workspace_root,
@@ -388,7 +428,7 @@ class RunCommandTest(unittest.TestCase):
 class StartPersistentShellTest(unittest.TestCase):
     """Tests for the start_persistent_shell function."""
 
-    @patch("tools.bash_tool.pexpect.spawn")
+    @patch("ii_agent.tools.bash_tool.pexpect.spawn")
     def test_start_persistent_shell(self, mock_spawn):
         """Test the start_persistent_shell function."""
         # Create a mock child process

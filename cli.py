@@ -109,7 +109,7 @@ async def async_main():
     # Create context manager based on argument
     if args.context_manager == "file-based":
         context_manager = FileBasedContextManager(
-            workspace_dir=workspace_path,
+            workspace_manager=workspace_manager,
             token_counter=token_counter,
             logger=logger_for_agent_logs,
             token_budget=120_000,
@@ -121,9 +121,6 @@ async def async_main():
             token_budget=120_000,
         )
 
-    system_prompt = SYSTEM_PROMPT.format(
-        workspace_root=workspace_manager.root,
-    )
     queue = asyncio.Queue()
     tools = get_system_tools(
         workspace_manager=workspace_manager,
@@ -139,7 +136,7 @@ async def async_main():
         },
     )
     agent = AnthropicFC(
-        system_prompt=system_prompt,
+        system_prompt=SYSTEM_PROMPT,
         client=client,
         workspace_manager=workspace_manager,
         tools=tools,
