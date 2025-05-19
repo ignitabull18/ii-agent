@@ -19,6 +19,7 @@ import {
   Sparkle,
   Terminal,
   Video,
+  Presentation,
 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -66,6 +67,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return <ImageIcon className={className} />;
       case TOOL.DEEP_RESEARCH:
         return <Sparkle className={className} />;
+      case TOOL.PRESENTATION:
+        return <Presentation className={className} />;
 
       case TOOL.BROWSER_WAIT:
         return <LoaderCircle className={className} />;
@@ -105,6 +108,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return "Thinking";
       case TOOL.WEB_SEARCH:
         return "Searching";
+      case TOOL.IMAGE_SEARCH:
+        return "Searching for Images";
       case TOOL.VISIT:
       case TOOL.BROWSER_USE:
         return "Browsing";
@@ -130,6 +135,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return "Generating Image";
       case TOOL.DEEP_RESEARCH:
         return "Deep Researching";
+      case TOOL.PRESENTATION:
+        return "Using presentation agent";
 
       case TOOL.BROWSER_WAIT:
         return "Waiting for Page to Load";
@@ -169,6 +176,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return value.tool_input?.thought;
       case TOOL.WEB_SEARCH:
         return value.tool_input?.query;
+      case TOOL.IMAGE_SEARCH:
+        return value.tool_input?.query;
       case TOOL.VISIT:
         return value.tool_input?.url;
       case TOOL.BROWSER_USE:
@@ -206,6 +215,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
           : value.tool_input?.output_filename?.replace(workspaceInfo, "");
       case TOOL.DEEP_RESEARCH:
         return value.tool_input?.query;
+      case TOOL.PRESENTATION:
+        return value.tool_input?.action + ": " + value.tool_input?.description;
 
       case TOOL.BROWSER_WAIT:
         return value.tool_input?.url;

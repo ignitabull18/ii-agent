@@ -28,10 +28,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import anyio
 import base64
-from sqlalchemy import desc, asc, text
+from sqlalchemy import asc, text
 
 from ii_agent.core.event import RealtimeEvent, EventType
-from ii_agent.db.models import Event, Session
+from ii_agent.db.models import Event
 from utils import parse_common_args, create_workspace_manager_for_connection
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
@@ -88,9 +88,9 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_connections.add(websocket)
 
-    workspace_manager, session_uuid = (
-        create_workspace_manager_for_connection(global_args.workspace, global_args.use_container_workspace)
-    ) 
+    workspace_manager, session_uuid = create_workspace_manager_for_connection(
+        global_args.workspace, global_args.use_container_workspace
+    )
     print(f"Workspace manager created: {workspace_manager}")
 
     try:
@@ -118,7 +118,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Create a new agent for this connection
                     tool_args = content.get("tool_args", {})
                     agent = create_agent_for_connection(
-                       session_uuid, workspace_manager, websocket, tool_args
+                        session_uuid, workspace_manager, websocket, tool_args
                     )
                     active_agents[websocket] = agent
 
@@ -278,7 +278,6 @@ async def run_agent_async(websocket: WebSocket, user_input: str, resume: bool = 
             del active_tasks[websocket]
 
 
-
 def cleanup_connection(websocket: WebSocket):
     """Clean up resources associated with a websocket connection."""
     # Remove from active connections
@@ -288,7 +287,9 @@ def cleanup_connection(websocket: WebSocket):
     # Set websocket to None in the agent but keep the message processor running
     if websocket in active_agents:
         agent = active_agents[websocket]
-        agent.websocket = None  # This will prevent sending to websocket but keep processing
+        agent.websocket = (
+            None  # This will prevent sending to websocket but keep processing
+        )
         # Don't cancel the message processor - it will continue saving to database
         if websocket in message_processors:
             del message_processors[websocket]  # Just remove the reference
@@ -305,7 +306,9 @@ def cleanup_connection(websocket: WebSocket):
 
 def create_agent_for_connection(
     session_id: uuid.UUID,
-    workspace_manager: WorkspaceManager, websocket: WebSocket, tool_args: Dict[str, Any]
+    workspace_manager: WorkspaceManager,
+    websocket: WebSocket,
+    tool_args: Dict[str, Any],
 ):
     """Create a new agent instance for a websocket connection."""
     global global_args
@@ -326,7 +329,11 @@ def create_agent_for_connection(
     db_manager = DatabaseManager(base_workspace_dir=global_args.workspace)
 
     # Create a new session and get its workspace directory
-    db_manager.create_session(device_id=device_id, session_uuid=session_id, workspace_path=workspace_manager.root)
+    db_manager.create_session(
+        device_id=device_id,
+        session_uuid=session_id,
+        workspace_path=workspace_manager.root,
+    )
     logger_for_agent_logs.info(
         f"Created new session {session_id} with workspace at {workspace_manager.root}"
     )
@@ -364,6 +371,7 @@ def create_agent_for_connection(
     )
     queue = asyncio.Queue()
     tools = get_system_tools(
+        client=client,
         workspace_manager=workspace_manager,
         message_queue=queue,
         container_id=global_args.docker_container_id,
@@ -583,10 +591,10 @@ async def get_sessions_by_device_id(device_id: str):
             AND session.device_id = :device_id
             ORDER BY session.created_at DESC
             """)
-            
+
             # Execute the raw query with parameters
             result = session.execute(query, {"device_id": device_id})
-            
+
             # Convert result to a list of dictionaries
             sessions = []
             for row in result:
@@ -595,10 +603,14 @@ async def get_sessions_by_device_id(device_id: str):
                     "workspace_dir": row.workspace_dir,
                     "created_at": row.created_at,
                     "device_id": row.device_id,
-                    "first_message": json.loads(row.first_message).get("content", {}).get("text", "") if row.first_message else ""
+                    "first_message": json.loads(row.first_message)
+                    .get("content", {})
+                    .get("text", "")
+                    if row.first_message
+                    else "",
                 }
                 sessions.append(session_data)
-            
+
             return {"sessions": sessions}
 
     except Exception as e:
