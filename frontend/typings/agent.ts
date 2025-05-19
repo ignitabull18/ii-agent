@@ -31,7 +31,9 @@ export enum TOOL {
   SEQUENTIAL_THINKING = "sequential_thinking",
   STR_REPLACE_EDITOR = "str_replace_editor",
   BROWSER_USE = "browser_use",
+  PRESENTATION = "presentation",
   WEB_SEARCH = "web_search",
+  IMAGE_SEARCH = "image_search",
   VISIT = "visit_webpage",
   BASH = "bash",
   COMPLETE = "complete",
@@ -65,6 +67,8 @@ export type ActionStep = {
     isResult?: boolean;
     tool_name?: string;
     tool_input?: {
+      description?: string;
+      action?: string;
       text?: string;
       thought?: string;
       path?: string;

@@ -291,7 +291,9 @@ def cleanup_connection(websocket: WebSocket):
     # Set websocket to None in the agent but keep the message processor running
     if websocket in active_agents:
         agent = active_agents[websocket]
-        agent.websocket = None  # This will prevent sending to websocket but keep processing
+        agent.websocket = (
+            None  # This will prevent sending to websocket but keep processing
+        )
         # Don't cancel the message processor - it will continue saving to database
         if websocket in message_processors:
             del message_processors[websocket]  # Just remove the reference
@@ -370,6 +372,7 @@ def create_agent_for_connection(
     # Initialize agent with websocket
     queue = asyncio.Queue()
     tools = get_system_tools(
+        client=client,
         workspace_manager=workspace_manager,
         message_queue=queue,
         container_id=global_args.docker_container_id,

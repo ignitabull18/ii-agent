@@ -200,6 +200,59 @@ class TavilySearchClient(BaseSearchClient):
             return f"Error searching with Tavily: {str(e)}"
 
 
+class ImageSearchClient:
+    """
+    A client for the SerpAPI search engine.
+    """
+
+    name = "ImageSerpAPI"
+
+    def __init__(self, max_results=10, **kwargs):
+        self.max_results = max_results
+        self.api_key = os.environ.get("SERPAPI_API_KEY", "")
+
+    def _search_query_by_serp_api(self, query, max_results=10):
+        """Searches the query using SerpAPI."""
+
+        serpapi_api_key = self.api_key
+
+        url = "https://serpapi.com/search.json"
+        params = {"q": query, "api_key": serpapi_api_key, "engine": "google_images"}
+        encoded_url = url + "?" + urllib.parse.urlencode(params)
+        search_response = []
+        try:
+            response = requests.get(encoded_url)
+            if response.status_code == 200:
+                search_results = response.json()
+                if search_results:
+                    results = search_results["images_results"]
+                    results_processed = 0
+                    for result in results:
+                        if results_processed >= max_results:
+                            break
+                        search_response.append(
+                            {
+                                "title": result["title"],
+                                "url": result["link"],
+                                "thumbnail": result["thumbnail"],
+                            }
+                        )
+                        results_processed += 1
+        except Exception as e:
+            print(f"Error: {e}. Failed fetching sources. Resulting in empty response.")
+            search_response = []
+
+        return search_response
+
+    def forward(self, query: str) -> str:
+        try:
+            response = self._search_query_by_serp_api(query, self.max_results)
+            formatted_results = json.dumps(response, indent=4)
+            return truncate_content(formatted_results)
+        except Exception as e:
+            return f"Error searching with SerpAPI: {str(e)}"
+
+
 def create_search_client(max_results=10, **kwargs) -> BaseSearchClient:
     """
     A search client that selects from available search APIs in the following order:
@@ -225,3 +278,16 @@ def create_search_client(max_results=10, **kwargs) -> BaseSearchClient:
 
     print("Using DuckDuckGo to search")
     return DuckDuckGoSearchClient(max_results=max_results, **kwargs)
+
+
+def create_image_search_client(max_results=5, **kwargs) -> ImageSearchClient:
+    """
+    A search client that selects from available image search APIs in the following order:
+    Google > Bing > DuckDuckGo
+    """
+    if os.environ.get("SERPAPI_API_KEY"):
+        print("Using SerpAPI to search for images")
+        return ImageSearchClient(max_results=max_results, **kwargs)
+    else:
+        print("No image search API key found, using DuckDuckGo")
+        return None

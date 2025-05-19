@@ -2,8 +2,11 @@ import asyncio
 import logging
 from copy import deepcopy
 from typing import Optional, List, Dict, Any
+from ii_agent.llm.base import LLMClient
+from ii_agent.tools.advanced_tools.image_search_tool import ImageSearchTool
 from ii_agent.tools.base import LLMTool
 from ii_agent.llm.message_history import ToolCallParameters
+from ii_agent.tools.presentation_tool import PresentationTool
 from ii_agent.tools.web_search_tool import WebSearchTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
 from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
@@ -29,7 +32,6 @@ from ii_agent.tools.browser_tools import (
     BrowserGetSelectOptionsTool,
     BrowserSelectDropdownOptionTool,
 )
-from copy import deepcopy
 
 from ii_agent.tools.advanced_tools.audio_tool import (
     AudioTranscribeTool,
@@ -43,6 +45,7 @@ from ii_agent.tools.list_html_links_tool import ListHtmlLinksTool
 
 
 def get_system_tools(
+    client: LLMClient,
     workspace_manager: WorkspaceManager,
     message_queue: asyncio.Queue,
     container_id: Optional[str] = None,
@@ -74,7 +77,11 @@ def get_system_tools(
         ),
         bash_tool,
         ListHtmlLinksTool(workspace_manager=workspace_manager),
+        PresentationTool(client=client, workspace_manager=workspace_manager),
     ]
+    image_search_tool = ImageSearchTool()
+    if image_search_tool.is_available():
+        tools.append(image_search_tool)
 
     # Conditionally add tools based on tool_args
     if tool_args:
@@ -111,8 +118,12 @@ def get_system_tools(
                     BrowserClickTool(browser=browser, message_queue=message_queue),
                     BrowserEnterTextTool(browser=browser, message_queue=message_queue),
                     BrowserPressKeyTool(browser=browser, message_queue=message_queue),
-                    BrowserGetSelectOptionsTool(browser=browser, message_queue=message_queue),
-                    BrowserSelectDropdownOptionTool(browser=browser, message_queue=message_queue),
+                    BrowserGetSelectOptionsTool(
+                        browser=browser, message_queue=message_queue
+                    ),
+                    BrowserSelectDropdownOptionTool(
+                        browser=browser, message_queue=message_queue
+                    ),
                 ]
             )
         # Browser tools

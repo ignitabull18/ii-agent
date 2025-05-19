@@ -123,6 +123,7 @@ async def async_main():
 
     queue = asyncio.Queue()
     tools = get_system_tools(
+        client=client,
         workspace_manager=workspace_manager,
         message_queue=queue,
         container_id=args.docker_container_id,
