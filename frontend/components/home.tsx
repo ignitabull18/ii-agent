@@ -270,23 +270,6 @@ export default function Home() {
       return;
     }
 
-    // Create a modified question that includes information about uploaded files if needed
-    let finalQuestion = newQuestion;
-
-    // If files have been uploaded, add a note to the question with file names
-    if (uploadedFiles.length > 0) {
-      finalQuestion = `${newQuestion}\n\nNote: I've already uploaded the following files that you can use:\n${uploadedFiles
-        .map((file) => `- ${file}`)
-        .join("\n")}`;
-    }
-
-    // If files have been uploaded, add a note to the question with file names
-    if (uploadedFiles.length > 0) {
-      finalQuestion = `${newQuestion}\n\nNote: I've already uploaded the following files that you can use:\n${uploadedFiles
-        .map((file) => `- ${file}`)
-        .join("\n")}`;
-    }
-
     // send init agent event when first query
     if (messages.length <= 1) {
       console.log("send init agent event");
@@ -311,9 +294,9 @@ export default function Home() {
       JSON.stringify({
         type: "query",
         content: {
-          text: finalQuestion,
+          text: newQuestion,
           resume: messages.length > 0,
-          // files: uploadedFiles,
+          files: uploadedFiles?.map((file) => `.${file}`),
         },
       })
     );
