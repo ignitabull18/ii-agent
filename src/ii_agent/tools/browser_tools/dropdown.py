@@ -22,8 +22,8 @@ class BrowserGetSelectOptionsTool(BrowserTool):
         "required": ["index"],
     }
 
-    def __init__(self, browser: Browser):
-        super().__init__(browser)
+    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
+        super().__init__(browser, message_queue)
 
     async def _run(
         self,
