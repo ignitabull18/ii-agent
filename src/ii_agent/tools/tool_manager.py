@@ -111,7 +111,7 @@ def get_system_tools(
                     BrowserClickTool(browser=browser, message_queue=message_queue),
                     BrowserEnterTextTool(browser=browser, message_queue=message_queue),
                     BrowserPressKeyTool(browser=browser, message_queue=message_queue),
-                    BrowserGetSelectOptionsTool(browser=browser),
+                    BrowserGetSelectOptionsTool(browser=browser, message_queue=message_queue),
                     BrowserSelectDropdownOptionTool(browser=browser, message_queue=message_queue),
                 ]
             )

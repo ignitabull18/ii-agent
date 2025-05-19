@@ -90,17 +90,30 @@ class TavilyVisitClient(BaseVisitClient):
         tavily_client = TavilyClient(api_key=self.api_key)
         response = tavily_client.extract(url)
 
+        # Extract webpage content
+        response = tavily_client.extract(
+            url, include_images=True, extract_depth="advanced"
+        )
+
+        # Check if response contains results
         if not response or "results" not in response or not response["results"]:
-            raise ContentExtractionError("No content could be extracted from webpage")
+            return f"No content could be extracted from {url}"
 
-        content = response["results"][0]
-        if not content:
-            raise ContentExtractionError(
-                "No textual content could be extracted from webpage"
-            )
+        # Format the content from the first result
+        data = response["results"][0]
+        if not data:
+            return f"No textual content could be extracted from {url}"
 
-        return truncate_content(json.dumps(content, indent=4), self.max_output_length)
+        content = data["raw_content"]
+        # Format images as markdown
+        images = response["results"][0].get("images", [])
+        if images:
+            image_markdown = "\n\n### Images:\n"
+            for i, img_url in enumerate(images):
+                image_markdown += f"![Image {i + 1}]({img_url})\n"
+            content += image_markdown
 
+        return truncate_content(content, self.max_output_length)
 
 class FireCrawlVisitClient(BaseVisitClient):
     name = "FireCrawl"
@@ -127,13 +140,13 @@ class FireCrawlVisitClient(BaseVisitClient):
             )
             response.raise_for_status()
 
-            data = response.json().get("data")
+            data = response.json().get("data").get("markdown")
             if not data:
                 raise ContentExtractionError(
                     "No content could be extracted from webpage"
                 )
 
-            return truncate_content(json.dumps(data, indent=4), self.max_output_length)
+            return truncate_content(data, self.max_output_length)
 
         except requests.exceptions.RequestException as e:
             raise NetworkError(f"Error making request: {str(e)}")
@@ -155,6 +168,7 @@ class JinaVisitClient(BaseVisitClient):
             "Authorization": f"Bearer {self.api_key}",
             "X-Engine": "browser",
             "X-Return-Format": "markdown",
+            "X-With-Images-Summary": "true",
         }
 
         try:
@@ -167,7 +181,9 @@ class JinaVisitClient(BaseVisitClient):
                     "No content could be extracted from webpage"
                 )
 
-            content = json.dumps(json_response["data"], indent=4)
+            data = json_response["data"]
+
+            content = data["title"] + "\n\n" + data["content"]
             if not content:
                 raise ContentExtractionError(
                     "No content could be extracted from webpage"

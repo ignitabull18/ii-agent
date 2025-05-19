@@ -42,6 +42,7 @@ import {
   TOOL,
 } from "@/typings/agent";
 import ChatMessage from "./chat-message";
+import ImageBrowser from "./image-browser";
 
 export default function Home() {
   const xtermRef = useRef<XTerm | null>(null);
@@ -169,14 +170,13 @@ export default function Home() {
     (data: ActionStep | undefined, showTabOnly = false) => {
       if (!data) return;
 
-      // setActiveFileCodeEditor("");
-
       switch (data.type) {
         case TOOL.WEB_SEARCH:
           setActiveTab(TAB.BROWSER);
           setCurrentActionData(data);
           break;
 
+        case TOOL.IMAGE_GENERATE:
         case TOOL.BROWSER_USE:
         case TOOL.VISIT:
           setActiveTab(TAB.BROWSER);
@@ -284,6 +284,7 @@ export default function Home() {
         .map((file) => `- ${file}`)
         .join("\n")}`;
     }
+
     // send init agent event when first query
     if (messages.length <= 1) {
       console.log("send init agent event");
@@ -310,6 +311,7 @@ export default function Home() {
         content: {
           text: finalQuestion,
           resume: messages.length > 0,
+          // files: uploadedFiles,
         },
       })
     );
@@ -326,6 +328,7 @@ export default function Home() {
     if (socket) {
       socket.close();
     }
+    setSessionId(null);
     router.push("/");
     setMessages([]);
     setIsLoading(false);
@@ -466,6 +469,11 @@ export default function Home() {
       // Clear the input
       event.target.value = "";
     }
+  };
+
+  const getRemoteURL = (path: string | undefined) => {
+    const workspaceId = workspaceInfo.split("/").pop();
+    return `${process.env.NEXT_PUBLIC_API_URL}/workspace/${workspaceId}/${path}`;
   };
 
   const handleEvent = (data: {
@@ -617,7 +625,7 @@ export default function Home() {
                 lastMessage?.action &&
                 lastMessage.action?.type === data.content.tool_name
               ) {
-                lastMessage.action.data.result = data.content.result as string;
+                lastMessage.action.data.result = `${data.content.result}`;
                 lastMessage.action.data.isResult = true;
                 setTimeout(() => {
                   handleClickAction(lastMessage.action);
@@ -911,8 +919,7 @@ export default function Home() {
                     }
                     raw={
                       currentActionData?.type === TOOL.VISIT
-                        ? parseJson(currentActionData?.data?.result as string)
-                            ?.raw_content
+                        ? (currentActionData?.data?.result as string)
                         : undefined
                     }
                   />
@@ -930,6 +937,18 @@ export default function Home() {
                         ? parseJson(currentActionData?.data?.result as string)
                         : undefined
                     }
+                  />
+                  <ImageBrowser
+                    className={
+                      activeTab === TAB.BROWSER &&
+                      currentActionData?.type === TOOL.IMAGE_GENERATE
+                        ? ""
+                        : "hidden"
+                    }
+                    url={currentActionData?.data.tool_input?.output_filename}
+                    image={getRemoteURL(
+                      currentActionData?.data.tool_input?.output_filename
+                    )}
                   />
                   <CodeEditor
                     currentActionData={currentActionData}
