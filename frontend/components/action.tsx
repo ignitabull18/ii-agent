@@ -46,6 +46,8 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         return <Lightbulb className={className} />;
       case TOOL.WEB_SEARCH:
         return <Search className={className} />;
+      case TOOL.IMAGE_SEARCH:
+        return <ImageIcon className={className} />;
       case TOOL.VISIT:
       case TOOL.BROWSER_USE:
         return <Globe className={className} />;
