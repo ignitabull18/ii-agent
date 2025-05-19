@@ -23,7 +23,7 @@ class BrowserScrollDownTool(BrowserTool):
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         page = await self.browser.get_current_page()
-
+        state = self.browser.get_state()
         is_pdf = is_pdf_url(page.url)
         if is_pdf:
             await page.keyboard.press("PageDown")
@@ -54,7 +54,7 @@ class BrowserScrollUpTool(BrowserTool):
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         page = await self.browser.get_current_page()
-
+        state = self.browser.get_state()
         is_pdf = is_pdf_url(page.url)
         if is_pdf:
             await page.keyboard.press("PageUp")
