@@ -44,6 +44,7 @@ from ii_agent.browser.utils import (
     put_highlight_elements_on_screenshot,
     scale_b64_image,
 )
+from ii_agent.browser.utils import is_pdf_url
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class BrowserConfig:
 
     cdp_url: Optional[str] = None
     viewport_size: ViewportSize = field(
-        default_factory=lambda: {"width": 1200, "height": 800}
+        default_factory=lambda: {"width": 1268, "height": 951}
     )
     storage_state: Optional[StorageState] = None
     detector: Optional[Detector] = None
@@ -216,6 +217,20 @@ class Browser:
         logger.info(f"Current page changed to {page.url}")
 
         self._cdp_session = await self.context.new_cdp_session(page)
+
+        # set viewport size 
+        await self._cdp_session.send("Emulation.setDeviceMetricsOverride", {
+            "width": self.config.viewport_size["width"],
+            "height": self.config.viewport_size["height"],
+            "deviceScaleFactor": 1,
+            "mobile": False,
+        })
+        # Optional: adjust visible size (for headless rendering)
+        await self._cdp_session.send("Emulation.setVisibleSize", {
+            "width": self.config.viewport_size["width"],
+            "height": self.config.viewport_size["height"],
+        })
+
         self.current_page = page
 
     async def _apply_anti_detection_scripts(self):
@@ -472,6 +487,20 @@ class Browser:
             or self._cdp_session._page != self.current_page
         ):
             self._cdp_session = await self.context.new_cdp_session(self.current_page)
+
+            # set viewport size 
+            await self._cdp_session.send("Emulation.setDeviceMetricsOverride", {
+                "width": self.config.viewport_size["width"],
+                "height": self.config.viewport_size["height"],
+                "deviceScaleFactor": 1,
+                "mobile": False,
+            })
+            # Optional: adjust visible size (for headless rendering)
+            await self._cdp_session.send("Emulation.setVisibleSize", {
+                "width": self.config.viewport_size["width"],
+                "height": self.config.viewport_size["height"],
+            })
+
             # Store reference to the page this session belongs to
             self._cdp_session._page = self.current_page
 
@@ -498,13 +527,6 @@ class Browser:
         )
         screenshot_b64 = screenshot_data["data"]
 
-        if self.screenshot_scale_factor is None:
-            test_img_data = base64.b64decode(screenshot_b64)
-            test_img = Image.open(io.BytesIO(test_img_data))
-            logger.info(f"Test image size: {test_img.size}")
-            self.screenshot_scale_factor = 1024 / test_img.size[0]
-            logger.info(f"Screenshot scale factor: {self.screenshot_scale_factor}")
-
         screenshot_b64 = scale_b64_image(screenshot_b64, self.screenshot_scale_factor)
         return screenshot_b64
 
@@ -525,3 +547,19 @@ class Browser:
                 "cookies": cookies,
             }
         return {}
+
+    async def handle_pdf_url_navigation(self):
+        page = await self.get_current_page()
+        if is_pdf_url(page.url):
+            await asyncio.sleep(5) # Long sleep to ensure PDF is loaded
+            await page.keyboard.press("Escape")
+            await asyncio.sleep(0.1)
+            await page.keyboard.press("Control+\\")
+            await asyncio.sleep(0.1)
+            await page.mouse.click(
+                self.config.viewport_size["width"] * 0.75,  # Right side of screen
+                self.config.viewport_size["height"] * 0.25   # Upper portion
+            )
+            
+        state = await self.update_state()
+        return state
