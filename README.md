@@ -1,7 +1,13 @@
-# II Agent
 
 <!-- ![II Agent Logo](assets/ii-agent-logo.png) -->
+<p align="center">
+  <img src="assets/ii.png" width="200"/>
+</p>
 
+[![Blog](https://img.shields.io/badge/Blog-II--Agent-blue)](https://ii.inc/web/blog/post/ii-agent)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+# II Agent
 
 II-Agent is an open-source intelligent assistant designed to streamline and enhance workflows across multiple domains. It represents a significant advancement in how we interact with technology—shifting from passive tools to intelligent systems capable of independently executing complex tasks.
 
