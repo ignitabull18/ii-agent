@@ -1,4 +1,3 @@
-<!-- ![II Agent Logo](assets/ii-agent-logo.png) -->
 <p align="center">
   <img src="assets/ii.png" width="200"/>
 </p>
@@ -12,9 +11,9 @@
 
 II-Agent is an open-source intelligent assistant designed to streamline and enhance workflows across multiple domains. It represents a significant advancement in how we interact with technology—shifting from passive tools to intelligent systems capable of independently executing complex tasks.
 
-## Video demo
+## Introduction
+https://github.com/user-attachments/assets/d0eb7440-a6e2-4276-865c-a1055181bb33
 
-[![II Agent Demo](https://img.youtube.com/vi/1qGYp2xPi0g/0.jpg)](https://www.youtube.com/watch?v=1qGYp2xPi0g)
 
 ## Overview
 
