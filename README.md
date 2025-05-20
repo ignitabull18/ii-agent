@@ -1,15 +1,20 @@
-
 <!-- ![II Agent Logo](assets/ii-agent-logo.png) -->
 <p align="center">
   <img src="assets/ii.png" width="200"/>
 </p>
 
-[![Blog](https://img.shields.io/badge/Blog-II--Agent-blue)](https://ii.inc/web/blog/post/ii-agent)
+[![GitHub stars](https://img.shields.io/github/stars/Intelligent-Internet/ii-agent?style=social)](https://github.com/Intelligent-Internet/ii-agent/stargazers)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Blog](https://img.shields.io/badge/Blog-II--Agent-blue)](https://ii.inc/web/blog/post/ii-agent)
+[![GAIA Benchmark](https://img.shields.io/badge/GAIA-Benchmark-green)](https://ii-agent-gaia.ii.inc/)
 
 # II Agent
 
 II-Agent is an open-source intelligent assistant designed to streamline and enhance workflows across multiple domains. It represents a significant advancement in how we interact with technology—shifting from passive tools to intelligent systems capable of independently executing complex tasks.
+
+## Video demo
+
+[![II Agent Demo](https://img.youtube.com/vi/1qGYp2xPi0g/0.jpg)](https://www.youtube.com/watch?v=1qGYp2xPi0g)
 
 ## Overview
 
@@ -80,6 +85,7 @@ We identified several issues with the GAIA benchmark during our evaluation:
 Despite these challenges, II-Agent demonstrated strong performance on the benchmark, particularly in areas requiring complex reasoning, tool use, and multi-step planning.
 
 ![GAIA Benchmark](assets/gaia.jpg)
+You can view the full traces of some samples here: [GAIA Benchmark Traces](https://ii-agent-gaia.ii.inc/)
 
 ## Requirements
 
