@@ -103,6 +103,8 @@ action = init
   - Incorporate video content and animations to demonstrate complex ideas
 * Each slide must follow these technical specifications:
   - Use modern CSS techniques for layout:
+    * Do not make the slide too long, if the slide is too long, split it into multiple slides
+    * Maintain slide-height consistency across all slides, the slide should fit into a single 1280x720px screen
     * Flexbox for one-dimensional layouts
     * CSS Grid for complex two-dimensional layouts
     * CSS Custom Properties for consistent theming
