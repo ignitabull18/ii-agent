@@ -1,8 +1,10 @@
+import asyncio
+from ii_agent.core.event import EventType, RealtimeEvent
 from ii_agent.tools.advanced_tools.image_search_tool import ImageSearchTool
 from ii_agent.tools.base import LLMTool
 from ii_agent.utils import WorkspaceManager
 from ii_agent.tools.bash_tool import create_bash_tool
-from ii_agent.tools.str_replace_tool import StrReplaceEditorTool
+from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
 
 from ii_agent.llm.message_history import MessageHistory
 from ii_agent.tools.base import ToolImplOutput
@@ -36,6 +38,8 @@ class PresentationTool(LLMTool):
     - Finalizing the presentation
 * Each slide action requires comprehensive documentation:
     - Content Requirements:
+        * Do not make the slide too long, if the slide is too long, split it into multiple slides
+        * Maintain slide-height consistency across all slides, the slide should fit into a single 1280x720px screen
         * Detailed context and background information
         * Supporting data points and statistics
         * Relevant historical context
@@ -67,8 +71,8 @@ class PresentationTool(LLMTool):
 You are a presentation design expert, responsible for creating stunning, professional presentations that captivate audiences.
 * The presentation should contain a maximum of 10 slides, unless stated otherwise.
 * After initialization, you will have access to a reveal.js directory in the workspace, in which index.html contains the code that represents your full presentation. If it's not available, you need to clone the reveal.js template and use the bash tool to run the command `npm install` to install the dependencies on the correct path.
-git clone https://github.com/khoangothe/reveal.js.git {self.workspace_manager.root}/presentation/reveal.js
-cd {self.workspace_manager.root}/presentation/reveal.js && npm install
+git clone https://github.com/khoangothe/reveal.js.git  ./presentation/reveal.js
+cd ./presentation/reveal.js && npm install
 
 * To insert a new slide, you need to create a new html file in the reveal.js/slides directory, and then update the index.html file to include the new slide by using nested presentation inside an iframe tag.
 <section>
@@ -85,7 +89,7 @@ cd {self.workspace_manager.root}/presentation/reveal.js && npm install
   - Use whitespace strategically to create breathing room and emphasize key elements
   - Implement a consistent color scheme
   - Choose typography that enhances readability
-  - Use the image_search tool to find images that are relevant to the slide, if you cannot use the image_search tool avoid using images
+  - Use the image_search tool to find images that are relevant to the slide, if you cannot use the image_search tool avoid using images unless you are provided the urls
   - Select and integrate high-quality visual elements that reinforce key messages
   - Implement subtle, purposeful animations that enhance content without overwhelming
   - Strategically place icons to improve visual communication and navigation
@@ -120,7 +124,7 @@ cd {self.workspace_manager.root}/presentation/reveal.js && npm install
   - Implement Chart.js for beautiful data visualization
   - Add custom CSS animations for smooth transitions
 
-  * Recheck the presentation after each action to ensure all CSS styles are properly applied, overflow-y is set to auto,  and image URLs are correctly formatted and accessible
+  * Recheck the presentation after each action to ensure all CSS styles are properly applied, overflow-y is set to auto,  and image URLs if any are correctly formatted and accessible
 
 * The final_check action is crucial for presentation perfection:
   - Reread each slide to ensure all CSS styles are properly applied and image URLs are correctly formatted and accessible
@@ -139,6 +143,21 @@ cd {self.workspace_manager.root}/presentation/reveal.js && npm install
                 "description": "The action to perform on the presentation.",
                 "enum": ["init", "create", "update", "delete", "final_check"],
             },
+            "images": {
+                "type": "array",
+                "description": "List of image URLs and their descriptions to be used in the presentation slides.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL of an image"},
+                        "description": {
+                            "type": "string",
+                            "description": "Description of what the image represents or how it should be used",
+                        },
+                    },
+                    "required": ["url", "description"],
+                },
+            },
         },
         "required": ["description", "action"],
     }
@@ -147,11 +166,13 @@ cd {self.workspace_manager.root}/presentation/reveal.js && npm install
         self,
         client,
         workspace_manager: WorkspaceManager,
+        message_queue: asyncio.Queue,
         ask_user_permission: bool = False,
     ):
         super().__init__()
         self.client = client
         self.workspace_manager = workspace_manager
+        self.message_queue = message_queue
         self.bash_tool = create_bash_tool(ask_user_permission, workspace_manager.root)
         self.tools = [
             self.bash_tool,
@@ -212,7 +233,7 @@ cd {self.workspace_manager.root}/presentation/reveal.js && npm install
         else:
             # Handle other actions (create, update, delete, final_refinement)
             # Add description to history
-            instruction = f"Perform '{action}' on presentation at path '{self.workspace_manager.root}/presentation/reveal.js' with description: {description}"
+            instruction = f"Perform '{action}' on presentation at path './presentation/reveal.js' with description: {description}"
             self.history.add_user_prompt(instruction)
             self.interrupted = False
 
@@ -233,66 +254,74 @@ cd {self.workspace_manager.root}/presentation/reveal.js && npm install
                     if sorted_names[i] == sorted_names[i + 1]:
                         raise ValueError(f"Tool {sorted_names[i]} is duplicated")
 
-                try:
-                    current_messages = self.history.get_messages_for_llm()
+                current_messages = self.history.get_messages_for_llm()
 
-                    # Generate response using the client
-                    model_response, _ = self.client.generate(
-                        messages=current_messages,
-                        max_tokens=8192,
-                        tools=tool_params,
-                        system_prompt=self.PROMPT,
-                    )
+                # Generate response using the client
+                model_response, _ = self.client.generate(
+                    messages=current_messages,
+                    max_tokens=8192,
+                    tools=tool_params,
+                    system_prompt=self.PROMPT,
+                )
 
-                    print(model_response)
+                # Add the raw response to the canonical history
+                self.history.add_assistant_turn(model_response)
 
-                    # Add the raw response to the canonical history
-                    self.history.add_assistant_turn(model_response)
+                # Handle tool calls
+                pending_tool_calls = self.history.get_pending_tool_calls()
 
-                    # Handle tool calls
-                    pending_tool_calls = self.history.get_pending_tool_calls()
-
-                    if len(pending_tool_calls) == 0:
-                        # No tools were called, so assume the task is complete
-                        return ToolImplOutput(
-                            tool_output=self.history.get_last_assistant_text_response(),
-                            tool_result_message="Task completed",
-                            auxiliary_data={"success": True},
-                        )
-
-                    if len(pending_tool_calls) > 1:
-                        raise ValueError("Only one tool call per turn is supported")
-
-                    assert len(pending_tool_calls) == 1
-                    tool_call = pending_tool_calls[0]
-
-                    try:
-                        tool = next(
-                            t for t in self.tools if t.name == tool_call.tool_name
-                        )
-                    except StopIteration as exc:
-                        raise ValueError(
-                            f"Tool with name {tool_call.tool_name} not found"
-                        ) from exc
-
-                    # Execute the tool
-                    result = tool.run(tool_call.tool_input, deepcopy(self.history))
-
-                    # Handle both string results and tuples
-                    if isinstance(result, tuple):
-                        tool_result, _ = result
-                    else:
-                        tool_result = result
-
-                    self.history.add_tool_call_result(tool_call, tool_result)
-
-                except KeyboardInterrupt:
-                    # Handle interruption
+                if len(pending_tool_calls) == 0:
+                    # No tools were called, so assume the task is complete
                     return ToolImplOutput(
-                        tool_output="Operation interrupted by user",
-                        tool_result_message="Operation interrupted by user",
-                        auxiliary_data={"success": False},
+                        tool_output=self.history.get_last_assistant_text_response(),
+                        tool_result_message="Task completed",
+                        auxiliary_data={"success": True},
                     )
+
+                if len(pending_tool_calls) > 1:
+                    raise ValueError("Only one tool call per turn is supported")
+
+                assert len(pending_tool_calls) == 1
+                tool_call = pending_tool_calls[0]
+                self.message_queue.put_nowait(
+                    RealtimeEvent(
+                        type=EventType.TOOL_CALL,
+                        content={
+                            "tool_call_id": tool_call.tool_call_id,
+                            "tool_name": tool_call.tool_name,
+                            "tool_input": tool_call.tool_input,
+                        },
+                    )
+                )
+
+                try:
+                    tool = next(t for t in self.tools if t.name == tool_call.tool_name)
+                except StopIteration as exc:
+                    raise ValueError(
+                        f"Tool with name {tool_call.tool_name} not found"
+                    ) from exc
+
+                # Execute the tool
+                result = tool.run(tool_call.tool_input, deepcopy(self.history))
+
+                # Handle both string results and tuples
+                if isinstance(result, tuple):
+                    tool_result, _ = result
+                else:
+                    tool_result = result
+
+                self.history.add_tool_call_result(tool_call, tool_result)
+
+                self.message_queue.put_nowait(
+                    RealtimeEvent(
+                        type=EventType.TOOL_RESULT,
+                        content={
+                            "tool_call_id": tool_call.tool_call_id,
+                            "tool_name": tool_call.tool_name,
+                            "result": tool_result,
+                        },
+                    )
+                )
 
             # If we exit the loop without returning, we've hit max turns
             return ToolImplOutput(

@@ -77,7 +77,11 @@ def get_system_tools(
         ),
         bash_tool,
         ListHtmlLinksTool(workspace_manager=workspace_manager),
-        PresentationTool(client=client, workspace_manager=workspace_manager),
+        PresentationTool(
+            client=client,
+            workspace_manager=workspace_manager,
+            message_queue=message_queue,
+        ),
     ]
     image_search_tool = ImageSearchTool()
     if image_search_tool.is_available():
