@@ -111,23 +111,19 @@ def get_system_tools(
             browser = Browser()
             tools.extend(
                 [
-                    BrowserNavigationTool(browser=browser, message_queue=message_queue),
-                    BrowserRestartTool(browser=browser, message_queue=message_queue),
-                    BrowserScrollDownTool(browser=browser, message_queue=message_queue),
-                    BrowserScrollUpTool(browser=browser, message_queue=message_queue),
-                    BrowserViewTool(browser=browser, message_queue=message_queue),
-                    BrowserWaitTool(browser=browser, message_queue=message_queue),
-                    BrowserSwitchTabTool(browser=browser, message_queue=message_queue),
-                    BrowserOpenNewTabTool(browser=browser, message_queue=message_queue),
-                    BrowserClickTool(browser=browser, message_queue=message_queue),
-                    BrowserEnterTextTool(browser=browser, message_queue=message_queue),
-                    BrowserPressKeyTool(browser=browser, message_queue=message_queue),
-                    BrowserGetSelectOptionsTool(
-                        browser=browser, message_queue=message_queue
-                    ),
-                    BrowserSelectDropdownOptionTool(
-                        browser=browser, message_queue=message_queue
-                    ),
+                    BrowserNavigationTool(browser=browser),
+                    BrowserRestartTool(browser=browser),
+                    BrowserScrollDownTool(browser=browser),
+                    BrowserScrollUpTool(browser=browser),
+                    BrowserViewTool(browser=browser),
+                    BrowserWaitTool(browser=browser),
+                    BrowserSwitchTabTool(browser=browser),
+                    BrowserOpenNewTabTool(browser=browser),
+                    BrowserClickTool(browser=browser),
+                    BrowserEnterTextTool(browser=browser),
+                    BrowserPressKeyTool(browser=browser),
+                    BrowserGetSelectOptionsTool(browser=browser),
+                    BrowserSelectDropdownOptionTool(browser=browser),
                 ]
             )
         # Browser tools

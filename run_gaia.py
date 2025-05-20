@@ -279,7 +279,7 @@ async def answer_single_question(
         BrowserRestartTool(browser=browser),
         BrowserScrollDownTool(browser=browser),
         BrowserScrollUpTool(browser=browser),
-        BrowserViewTool(browser=browser, message_queue=message_queue),
+        BrowserViewTool(browser=browser),
         BrowserWaitTool(browser=browser),
         BrowserClickTool(browser=browser),
         BrowserEnterTextTool(browser=browser),
