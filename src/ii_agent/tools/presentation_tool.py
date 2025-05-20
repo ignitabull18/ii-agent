@@ -69,11 +69,9 @@ class PresentationTool(LLMTool):
 """
     PROMPT = """
 You are a presentation design expert, responsible for creating stunning, professional presentations that captivate audiences.
+Working directory: "." (You can only work inside the working directory with relative paths)
 * The presentation should contain a maximum of 10 slides, unless stated otherwise.
-* After initialization, you will have access to a reveal.js directory in the workspace, in which index.html contains the code that represents your full presentation. If it's not available, you need to clone the reveal.js template and use the bash tool to run the command `npm install` to install the dependencies on the correct path.
-git clone https://github.com/khoangothe/reveal.js.git  ./presentation/reveal.js
-cd ./presentation/reveal.js && npm install
-
+* After initialization, you will have access to a reveal.js directory in the workspace, in which index.html contains the code that represents your full presentation
 * To insert a new slide, you need to create a new html file in the reveal.js/slides directory, and then update the index.html file to include the new slide by using nested presentation inside an iframe tag.
 <section>
     <iframe src="slides/introduction.html" allowfullscreen scrolling="auto"></iframe>
@@ -213,7 +211,7 @@ cd ./presentation/reveal.js && npm install
             # Install dependencies
             install_result = self.bash_tool.run_impl(
                 {
-                    "command": f"cd {self.workspace_manager.root}/presentation/reveal.js && npm install"
+                    "command": f"cd {self.workspace_manager.root}/presentation/reveal.js && npm install && cd {self.workspace_manager.root}"
                 }
             )
 
@@ -263,6 +261,8 @@ cd ./presentation/reveal.js && npm install
                     tools=tool_params,
                     system_prompt=self.PROMPT,
                 )
+
+                print(model_response)
 
                 # Add the raw response to the canonical history
                 self.history.add_assistant_turn(model_response)
