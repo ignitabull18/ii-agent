@@ -271,8 +271,7 @@ export default function Home() {
     }
 
     // send init agent event when first query
-    if (messages.length <= 1) {
-      console.log("send init agent event");
+    if (!sessionId) {
       socket.send(
         JSON.stringify({
           type: "init_agent",
