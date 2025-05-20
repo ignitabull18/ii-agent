@@ -271,8 +271,7 @@ export default function Home() {
     }
 
     // send init agent event when first query
-    if (messages.length <= 1) {
-      console.log("send init agent event");
+    if (!sessionId) {
       socket.send(
         JSON.stringify({
           type: "init_agent",
@@ -589,7 +588,7 @@ export default function Home() {
             },
           ]);
         } else {
-          if (data.content.tool_name !== TOOL.SEQUENTIAL_THINKING) {
+          if (data.content.tool_name !== TOOL.SEQUENTIAL_THINKING && data.content.tool_name !== TOOL.PRESENTATION) { // TODO: Implement helper function to handle tool results
             setMessages((prev) => {
               const lastMessage = cloneDeep(prev[prev.length - 1]);
               if (
@@ -835,6 +834,7 @@ export default function Home() {
                 isUploading={isUploading}
                 isUseDeepResearch={isUseDeepResearch}
                 setIsUseDeepResearch={setIsUseDeepResearch}
+                isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
               />
             ) : (
               <motion.div

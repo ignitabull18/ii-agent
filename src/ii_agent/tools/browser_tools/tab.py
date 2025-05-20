@@ -1,6 +1,5 @@
 import asyncio
 
-from asyncio import Queue
 from typing import Any, Optional
 from ii_agent.browser.browser import Browser
 from ii_agent.tools.base import ToolImplOutput
@@ -22,8 +21,8 @@ class BrowserSwitchTabTool(BrowserTool):
         "required": ["index"],
     }
 
-    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
-        super().__init__(browser, message_queue)
+    def __init__(self, browser: Browser):
+        super().__init__(browser)
 
     async def _run(
         self,
@@ -35,7 +34,7 @@ class BrowserSwitchTabTool(BrowserTool):
         await asyncio.sleep(0.5)
         msg = f"Switched to tab {index}"
         state = await self.browser.update_state()
-        self.log_browser_state(state)
+        
         return utils.format_screenshot_tool_output(state.screenshot, msg)
 
 
@@ -44,8 +43,8 @@ class BrowserOpenNewTabTool(BrowserTool):
     description = "Open a new tab"
     input_schema = {"type": "object", "properties": {}, "required": []}
 
-    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
-        super().__init__(browser, message_queue)
+    def __init__(self, browser: Browser):
+        super().__init__(browser)
 
     async def _run(
         self,
@@ -56,5 +55,5 @@ class BrowserOpenNewTabTool(BrowserTool):
         await asyncio.sleep(0.5)
         msg = "Opened a new tab"
         state = await self.browser.update_state()
-        self.log_browser_state(state)
+        
         return utils.format_screenshot_tool_output(state.screenshot, msg)

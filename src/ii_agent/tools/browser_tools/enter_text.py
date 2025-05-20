@@ -1,6 +1,5 @@
 import asyncio
 
-from asyncio import Queue
 from typing import Any, Optional
 from ii_agent.browser.browser import Browser
 from ii_agent.tools.base import ToolImplOutput
@@ -23,8 +22,8 @@ class BrowserEnterTextTool(BrowserTool):
         "required": ["text"],
     }
 
-    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
-        super().__init__(browser, message_queue)
+    def __init__(self, browser: Browser):
+        super().__init__(browser)
 
     async def _run(
         self,
@@ -49,5 +48,5 @@ class BrowserEnterTextTool(BrowserTool):
 
         msg = f'Entered "{text}" on the keyboard. Make sure to double check that the text was entered to where you intended.'
         state = await self.browser.update_state()
-        self.log_browser_state(state)
+        
         return utils.format_screenshot_tool_output(state.screenshot, msg)

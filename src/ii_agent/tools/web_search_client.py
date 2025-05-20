@@ -233,8 +233,9 @@ class ImageSearchClient:
                         search_response.append(
                             {
                                 "title": result["title"],
-                                "url": result["link"],
-                                "thumbnail": result["thumbnail"],
+                                "image_url": result["original"],
+                                "width": result["original_width"],
+                                "height": result["original_height"],
                             }
                         )
                         results_processed += 1

@@ -25,6 +25,7 @@ interface QuestionInputProps {
   isUploading?: boolean;
   isUseDeepResearch?: boolean;
   setIsUseDeepResearch?: (value: boolean) => void;
+  isDisabled?: boolean;
 }
 
 const QuestionInput = ({
@@ -39,6 +40,7 @@ const QuestionInput = ({
   isUploading = false,
   isUseDeepResearch = false,
   setIsUseDeepResearch,
+  isDisabled,
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
 
@@ -240,7 +242,7 @@ const QuestionInput = ({
           </div>
 
           <Button
-            disabled={!value.trim()}
+            disabled={!value.trim() || isDisabled}
             onClick={() => handleSubmit(value)}
             className="cursor-pointer !border !border-red p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
           >

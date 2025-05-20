@@ -12,6 +12,7 @@ import logging
 import asyncio
 
 from ii_agent.core.event import RealtimeEvent, EventType
+from ii_agent.utils.constants import DEFAULT_MODEL
 from utils import parse_common_args, create_workspace_manager_for_connection
 from rich.console import Console
 from rich.panel import Panel
@@ -92,7 +93,7 @@ async def async_main():
     # Initialize LLM client
     client = get_client(
         "anthropic-direct",
-        model_name="claude-3-7-sonnet@20250219",
+        model_name=DEFAULT_MODEL,
         use_caching=False,
         project_id=args.project_id,
         region=args.region,
