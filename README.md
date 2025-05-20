@@ -73,7 +73,7 @@ We identified several issues with the GAIA benchmark during our evaluation:
 
 Despite these challenges, II-Agent demonstrated strong performance on the benchmark, particularly in areas requiring complex reasoning, tool use, and multi-step planning.
 
-![GAIA Benchmark](assets/gaia.png)
+![GAIA Benchmark](assets/gaia.jpg)
 
 ## Requirements
 
