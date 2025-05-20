@@ -1,6 +1,5 @@
 import asyncio
 
-from asyncio import Queue
 from typing import Any, Optional
 from playwright.async_api import TimeoutError
 from ii_agent.browser.browser import Browser
@@ -23,8 +22,8 @@ class BrowserNavigationTool(BrowserTool):
         "required": ["url"],
     }
 
-    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
-        super().__init__(browser, message_queue)
+    def __init__(self, browser: Browser):
+        super().__init__(browser)
 
     async def _run(
         self,
@@ -46,7 +45,7 @@ class BrowserNavigationTool(BrowserTool):
 
         state = await self.browser.update_state()
         state = await self.browser.handle_pdf_url_navigation()
-        self.log_browser_state(state)
+        
         msg = f"Navigated to {url}"
 
         return utils.format_screenshot_tool_output(state.screenshot, msg)
@@ -66,8 +65,8 @@ class BrowserRestartTool(BrowserTool):
         "required": ["url"],
     }
 
-    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
-        super().__init__(browser, message_queue)
+    def __init__(self, browser: Browser):
+        super().__init__(browser)
 
     async def _run(
         self,
@@ -90,7 +89,7 @@ class BrowserRestartTool(BrowserTool):
 
         state = await self.browser.update_state()
         state = await self.browser.handle_pdf_url_navigation()
-        self.log_browser_state(state)
+        
         msg = f"Navigated to {url}"
 
         return utils.format_screenshot_tool_output(state.screenshot, msg)
