@@ -234,7 +234,7 @@ class ImageSearchClient:
                             {
                                 "title": result["title"],
                                 "source_url": result["link"],
-                                "image_url": result["thumbnail"],
+                                "image_url": result["original"],
                             }
                         )
                         results_processed += 1
