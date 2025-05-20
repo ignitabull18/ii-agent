@@ -1,14 +1,12 @@
 import asyncio
 
-from asyncio import Queue
 from typing import Any, Optional
 from ii_agent.tools.base import (
     LLMTool,
     ToolImplOutput,
 )
-from ii_agent.browser.browser import Browser, BrowserState
+from ii_agent.browser.browser import Browser
 from ii_agent.llm.message_history import MessageHistory
-from ii_agent.core.event import EventType, RealtimeEvent
 
 
 def get_event_loop():
@@ -23,9 +21,8 @@ def get_event_loop():
 
 
 class BrowserTool(LLMTool):
-    def __init__(self, browser: Browser, message_queue: Optional[Queue] = None):
+    def __init__(self, browser: Browser):
         self.browser = browser
-        self.message_queue = message_queue
 
     async def _run(
         self,
@@ -41,16 +38,3 @@ class BrowserTool(LLMTool):
     ) -> ToolImplOutput:
         loop = get_event_loop()
         return loop.run_until_complete(self._run(tool_input, message_history))
-
-    def log_browser_state(self, state: BrowserState):
-        if self.message_queue:
-            self.message_queue.put_nowait(
-                RealtimeEvent(
-                    type=EventType.BROWSER_USE,
-                    content={
-                        "url": state.url,
-                        "screenshot": state.screenshot,
-                        "screenshot_with_highlights": state.screenshot_with_highlights,
-                    },
-                )
-            )
