@@ -834,6 +834,7 @@ export default function Home() {
                 isUploading={isUploading}
                 isUseDeepResearch={isUseDeepResearch}
                 setIsUseDeepResearch={setIsUseDeepResearch}
+                isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
               />
             ) : (
               <motion.div

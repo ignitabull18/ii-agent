@@ -14,6 +14,7 @@ from ii_agent.tools.base import ToolImplOutput, LLMTool
 from ii_agent.tools.utils import encode_image
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import AgentToolManager
+from ii_agent.utils.constants import COMPLETE_MESSAGE
 from ii_agent.utils.workspace_manager import WorkspaceManager
 
 
@@ -214,6 +215,9 @@ try breaking down the task into smaller steps. After call this tool to update or
                     tools=all_tool_params,
                     system_prompt=self.system_prompt,
                 )
+                
+                if len(model_response) == 0:
+                    model_response = [TextResult(text=COMPLETE_MESSAGE)]
 
                 # Add the raw response to the canonical history
                 self.history.add_assistant_turn(model_response)
@@ -222,8 +226,15 @@ try breaking down the task into smaller steps. After call this tool to update or
                 pending_tool_calls = self.history.get_pending_tool_calls()
 
                 if len(pending_tool_calls) == 0:
+                    
                     # No tools were called, so assume the task is complete
                     self.logger_for_agent_logs.info("[no tools were called]")
+                    self.message_queue.put_nowait(
+                        RealtimeEvent(
+                            type=EventType.AGENT_RESPONSE,
+                            content={"text": "Task completed"},
+                        )
+                    )
                     return ToolImplOutput(
                         tool_output=self.history.get_last_assistant_text_response(),
                         tool_result_message="Task completed",
@@ -275,7 +286,7 @@ try breaking down the task into smaller steps. After call this tool to update or
                         # Add a fake model response, so the next turn is the user's
                         # turn in case they want to resume
                         self.history.add_assistant_turn(
-                            [TextResult(text="Completed the task.")]
+                            [TextResult(text=COMPLETE_MESSAGE)]
                         )
                         self.message_queue.put_nowait(
                             RealtimeEvent(
