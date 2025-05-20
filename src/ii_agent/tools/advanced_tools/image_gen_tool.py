@@ -16,8 +16,8 @@ from ii_agent.tools.base import (
 )
 from ii_agent.utils import WorkspaceManager
 
-GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "backend-alpha-97077")
-GCP_LOCATION = os.environ.get("GOOGLE_CLOUD_REGION", "us-central1")
+GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
+GCP_LOCATION = os.environ.get("GOOGLE_CLOUD_REGION")
 
 SUPPORTED_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4"]
 SAFETY_FILTER_LEVELS = ["block_some", "block_most", "block_few", "block_none"]

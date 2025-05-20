@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 from copy import deepcopy
@@ -93,14 +94,19 @@ def get_system_tools(
             tools.append(DeepResearchTool())
         if tool_args.get("pdf", False):
             tools.append(PdfTextExtractTool(workspace_manager=workspace_manager))
-        if tool_args.get("media_generation", False):
+        if tool_args.get("media_generation", False) and (
+            os.environ.get("GOOGLE_CLOUD_PROJECT")
+            and os.environ.get("GOOGLE_CLOUD_REGION")
+        ):
             tools.extend(
                 [
                     ImageGenerateTool(workspace_manager=workspace_manager),
                     VideoGenerateFromTextTool(workspace_manager=workspace_manager),
                 ]
             )
-        if tool_args.get("audio_generation", False):
+        if tool_args.get("audio_generation", False) and (
+            os.environ.get("OPEN_API_KEY") and os.environ.get("AZURE_OPENAI_ENDPOINT")
+        ):
             tools.extend(
                 [
                     AudioTranscribeTool(workspace_manager=workspace_manager),

@@ -18,14 +18,9 @@ from ii_agent.tools.base import (
 )
 from ii_agent.utils import WorkspaceManager
 
-GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "backend-alpha-97077")
-GCP_LOCATION = os.environ.get("GOOGLE_CLOUD_REGION", "us-central1")
-VEO_GCS_OUTPUT_BUCKET = os.environ.get("VEO_GCS_OUTPUT_BUCKET", "gs://ii-agent-bucket")
-
-if not VEO_GCS_OUTPUT_BUCKET or not VEO_GCS_OUTPUT_BUCKET.startswith("gs://"):
-    raise ValueError(
-        "VEO_GCS_OUTPUT_BUCKET environment variable must be set to a valid GCS URI (e.g., gs://my-bucket-name)"
-    )
+GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
+GCP_LOCATION = os.environ.get("GOOGLE_CLOUD_REGION")
+VEO_GCS_OUTPUT_BUCKET = os.environ.get("VEO_GCS_OUTPUT_BUCKET")
 
 
 def _get_gcs_client():
@@ -148,6 +143,10 @@ The generated video will be saved to the specified local path in the workspace."
 
     def __init__(self, workspace_manager: WorkspaceManager):
         super().__init__()
+        if not VEO_GCS_OUTPUT_BUCKET or not VEO_GCS_OUTPUT_BUCKET.startswith("gs://"):
+            raise ValueError(
+                "VEO_GCS_OUTPUT_BUCKET environment variable must be set to a valid GCS URI (e.g., gs://my-bucket-name)"
+            )
         self.workspace_manager = workspace_manager
         if not GCP_PROJECT_ID:
             raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set.")
