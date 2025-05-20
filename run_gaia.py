@@ -54,7 +54,7 @@ from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
 from ii_agent.llm.context_manager.standard import StandardContextManager
 from ii_agent.llm.token_counter import TokenCounter
-from ii_agent.utils.constants import UPLOAD_FOLDER_NAME
+from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
 from utils import parse_common_args
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.core.event import RealtimeEvent, EventType
@@ -213,9 +213,13 @@ async def answer_single_question(
             try:
                 shutil.rmtree(workspace_path, ignore_errors=True)
                 workspace_path.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Cleaned up and recreated workspace directory: {workspace_path}")
+                logger.info(
+                    f"Cleaned up and recreated workspace directory: {workspace_path}"
+                )
             except Exception as e:
-                logger.warning(f"Error during workspace cleanup: {e}. Continuing anyway...")
+                logger.warning(
+                    f"Error during workspace cleanup: {e}. Continuing anyway..."
+                )
 
     try:
         db_manager.create_session(
@@ -253,7 +257,7 @@ async def answer_single_question(
             logger.info(f"Copied file {source_file} to {dest_file}")
 
             # Update file path in example to point to workspace
-            # convert dest_file to absolute path  
+            # convert dest_file to absolute path
             example["file_name"] = str(dest_file.absolute())
         else:
             logger.warning(f"Source file not found: {source_file}")
@@ -293,7 +297,7 @@ async def answer_single_question(
         AudioTranscribeTool(workspace_manager=workspace_manager),
         YoutubeTranscriptTool(),
     ]
-    
+
     system_prompt = GAIA_SYSTEM_PROMPT
 
     # Create agent instance for this question
@@ -407,7 +411,7 @@ def main():
     # Initialize LLM client
     client = get_client(
         "anthropic-direct",
-        model_name="claude-3-7-sonnet@20250219",
+        model_name=DEFAULT_MODEL,
         use_caching=False,
         project_id=args.project_id,
         region=args.region,

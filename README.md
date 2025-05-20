@@ -158,7 +158,7 @@ Options:
 When using Anthropic client:
 ```bash
 export STATIC_FILE_BASE_URL=http://localhost:8000
-python ws_server.py
+python ws_server.py --port 8000
 ```
 
 When using Vertex:

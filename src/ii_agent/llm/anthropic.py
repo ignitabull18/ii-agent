@@ -51,6 +51,7 @@ from ii_agent.llm.base import (
     recursively_remove_invoke_tag,
     ImageBlock,
 )
+from ii_agent.utils.constants import DEFAULT_MODEL
 
 
 class AnthropicDirectClient(LLMClient):
@@ -58,7 +59,7 @@ class AnthropicDirectClient(LLMClient):
 
     def __init__(
         self,
-        model_name="claude-3-7-sonnet-20250219",
+        model_name=DEFAULT_MODEL,
         max_retries=2,
         use_caching=True,
         use_low_qos_server: bool = False,
@@ -80,6 +81,9 @@ class AnthropicDirectClient(LLMClient):
             self.client = anthropic.Anthropic(
                 api_key=api_key, max_retries=1, timeout=60 * 5
             )
+            model_name = model_name.replace(
+                "@", "-"
+            )  # Quick fix for Anthropic Vertex API
         self.model_name = model_name
         self.max_retries = max_retries
         self.use_caching = use_caching

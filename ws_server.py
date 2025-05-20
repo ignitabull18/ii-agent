@@ -32,7 +32,7 @@ from sqlalchemy import asc, text
 
 from ii_agent.core.event import RealtimeEvent, EventType
 from ii_agent.db.models import Event
-from ii_agent.utils.constants import UPLOAD_FOLDER_NAME
+from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
 from utils import parse_common_args, create_workspace_manager_for_connection
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
@@ -345,7 +345,7 @@ def create_agent_for_connection(
     # Initialize LLM client
     client = get_client(
         "anthropic-direct",
-        model_name="claude-3-7-sonnet@20250219",
+        model_name=DEFAULT_MODEL,
         use_caching=False,
         project_id=global_args.project_id,
         region=global_args.region,
