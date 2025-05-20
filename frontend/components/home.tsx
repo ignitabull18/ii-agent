@@ -588,7 +588,7 @@ export default function Home() {
             },
           ]);
         } else {
-          if (data.content.tool_name !== TOOL.SEQUENTIAL_THINKING) {
+          if (data.content.tool_name !== TOOL.SEQUENTIAL_THINKING && data.content.tool_name !== TOOL.PRESENTATION) { // TODO: Implement helper function to handle tool results
             setMessages((prev) => {
               const lastMessage = cloneDeep(prev[prev.length - 1]);
               if (
