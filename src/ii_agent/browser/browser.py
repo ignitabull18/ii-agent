@@ -3,14 +3,10 @@ Streamlined Playwright browser implementation.
 """
 
 import asyncio
-import base64
-import io
 import logging
 from dataclasses import dataclass, field
 from importlib import resources
 from typing import Any, Optional
-
-from PIL import Image
 from playwright.async_api import (
     Browser as PlaywrightBrowser,
 )
@@ -49,7 +45,7 @@ from ii_agent.browser.utils import is_pdf_url
 logger = logging.getLogger(__name__)
 
 INTERACTIVE_ELEMENTS_JS_CODE = resources.read_text(
-    "src.ii_agent.browser", "findVisibleInteractiveElements.js"
+    "ii_agent.browser", "findVisibleInteractiveElements.js"
 )
 
 
