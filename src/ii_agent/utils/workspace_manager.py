@@ -6,7 +6,7 @@ class WorkspaceManager:
     root: Path
 
     def __init__(self, root: Path, container_workspace: Optional[Path] = None):
-        self.root = root
+        self.root = root.absolute()
         self.container_workspace = container_workspace
 
     def workspace_path(self, path: Path | str) -> Path:

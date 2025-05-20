@@ -168,7 +168,7 @@ try breaking down the task into smaller steps. After call this tool to update or
                 if ext == "jpg":
                     ext = "jpeg"
                 if ext in ["png", "gif", "jpeg", "webp"]:
-                    base64_image = encode_image(file)
+                    base64_image = encode_image(str(self.workspace_manager.workspace_path(file)))
                     image_blocks.append(
                         {
                             "source": {
