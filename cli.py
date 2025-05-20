@@ -10,6 +10,9 @@ import os
 import argparse
 import logging
 import asyncio
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from ii_agent.core.event import RealtimeEvent, EventType
 from ii_agent.utils.constants import DEFAULT_MODEL
@@ -22,13 +25,11 @@ from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
-from dotenv import load_dotenv
 from ii_agent.llm.context_manager.file_based import FileBasedContextManager
 from ii_agent.llm.context_manager.standard import StandardContextManager
 from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
 
-load_dotenv()
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
 
@@ -130,10 +131,10 @@ async def async_main():
         container_id=args.docker_container_id,
         ask_user_permission=args.needs_permission,
         tool_args={
-            "deep_research": True,
+            "deep_research": False,
             "pdf": True,
-            "media_generation": True,
-            "audio_generation": True,
+            "media_generation": False,
+            "audio_generation": False,
             "browser": True,
         },
     )

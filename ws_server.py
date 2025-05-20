@@ -14,6 +14,8 @@ import logging
 import uuid
 from pathlib import Path
 from typing import Dict, List, Set, Any
+from dotenv import load_dotenv
+load_dotenv()
 
 import uvicorn
 from fastapi import (
@@ -38,7 +40,6 @@ from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
-from dotenv import load_dotenv
 
 from fastapi.staticfiles import StaticFiles
 
@@ -49,7 +50,6 @@ from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
 from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
 
-load_dotenv()
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
 
