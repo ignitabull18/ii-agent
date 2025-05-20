@@ -24,8 +24,9 @@ class MessageHistory:
     ):
         """Adds a user prompt."""
         user_turn = []
-        for img_block in image_blocks:
-            user_turn.append(ImageBlock(type="image", source=img_block["source"]))
+        if image_blocks is not None:
+            for img_block in image_blocks:
+                user_turn.append(ImageBlock(type="image", source=img_block["source"]))
 
         user_turn.append(TextPrompt(prompt))
         self.add_user_turn(user_turn)
