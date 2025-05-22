@@ -27,6 +27,8 @@ interface ChatMessageProps {
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleQuestionSubmit: (question: string) => void;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isGeneratingPrompt: boolean;
+  handleEnhancePrompt: () => void;
 }
 
 const ChatMessage = ({
@@ -43,6 +45,8 @@ const ChatMessage = ({
   handleKeyDown,
   handleQuestionSubmit,
   handleFileUpload,
+  isGeneratingPrompt,
+  handleEnhancePrompt,
 }: ChatMessageProps) => {
   return (
     <div className="col-span-4">
@@ -126,7 +130,7 @@ const ChatMessage = ({
               <motion.div
                 className={`inline-block text-left rounded-lg ${
                   message.role === "user"
-                    ? "bg-[#35363a] p-3 text-white max-w-[80%] border border-[#3A3B3F] shadow-sm"
+                    ? "bg-[#35363a] p-3 text-white max-w-[80%] border border-[#3A3B3F] shadow-sm whitespace-pre-wrap"
                     : "text-white"
                 }`}
                 initial={{ scale: 0.9 }}
@@ -221,6 +225,8 @@ const ChatMessage = ({
           handleFileUpload={handleFileUpload}
           isUploading={isUploading}
           isUseDeepResearch={isUseDeepResearch}
+          isGeneratingPrompt={isGeneratingPrompt}
+          handleEnhancePrompt={handleEnhancePrompt}
         />
       </motion.div>
     </div>

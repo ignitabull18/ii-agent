@@ -41,6 +41,7 @@ from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
+from ii_agent.utils.prompt_generator import enhance_user_prompt
 
 from fastapi.staticfiles import StaticFiles
 
@@ -206,6 +207,40 @@ async def websocket_endpoint(websocket: WebSocket):
                             RealtimeEvent(
                                 type=EventType.ERROR,
                                 content={"message": "No active query to cancel"},
+                            ).model_dump()
+                        )
+
+                elif msg_type == "enhance_prompt":
+                    # Process a request to enhance a prompt using an LLM
+                    user_input = content.get("text", "")
+                    files = content.get("files", [])
+                    
+                    # Call the enhance_prompt function from the module
+                    success, message, enhanced_prompt = await enhance_user_prompt(
+                        user_input=user_input,
+                        files=files,
+                        workspace_manager=workspace_manager,
+                        project_id=global_args.project_id,
+                        region=global_args.region
+                    )
+                    
+                    if success and enhanced_prompt:
+                        # Send the enhanced prompt back to the client
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.PROMPT_GENERATED,
+                                content={
+                                    "result": enhanced_prompt,
+                                    "original_request": user_input,
+                                },
+                            ).model_dump()
+                        )
+                    else:
+                        # Send error message
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.ERROR,
+                                content={"message": message},
                             ).model_dump()
                         )
 
