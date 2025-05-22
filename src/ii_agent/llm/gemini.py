@@ -71,8 +71,8 @@ class GeminiDirectClient(LLMClient):
                                 message_content.append(types.Part(text=item['text']))
                             elif item['type'] == 'image':
                                 message_content.append(types.Part.from_bytes(
-                                    data=item['data'],
-                                    mime_type=item['media_type']
+                                    data=item['source']['data'],
+                                    mime_type=item['source']['media_type']
                                 ))
                 else:
                     raise ValueError(f"Unknown message type: {type(message)}")
@@ -101,7 +101,13 @@ class GeminiDirectClient(LLMClient):
 
         response = self.client.models.generate_content(
             model=self.model_name,
-            config=types.GenerateContentConfig(tools=[tool_params]),
+            config=types.GenerateContentConfig(
+                tools=[tool_params],
+                system_instruction=system_prompt,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                tool_config=types.FunctionCallingConfig(mode="ANY")
+                ),
             contents=gemini_messages,
         )
 
@@ -118,10 +124,13 @@ class GeminiDirectClient(LLMClient):
         if response.text:
             internal_messages.append(TextResult(text=response.text))
 
+        if len(internal_messages) == 0:
+            raise ValueError("No response from Gemini")
+
         message_metadata = {
             "raw_response": response,
-            "input_tokens": 0,
-            "output_tokens": 0,
+            "input_tokens": response.usage_metadata.prompt_token_count,
+            "output_tokens": response.usage_metadata.candidates_token_count,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
         }

@@ -236,7 +236,7 @@ try breaking down the task into smaller steps. After call this tool to update or
                     self.message_queue.put_nowait(
                         RealtimeEvent(
                             type=EventType.AGENT_RESPONSE,
-                            content={"text": "Task completed"},
+                            content={"text": self.history.get_last_assistant_text_response()},
                         )
                     )
                     return ToolImplOutput(
