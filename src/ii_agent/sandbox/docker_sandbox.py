@@ -61,7 +61,9 @@ class DockerSandbox:
                 mem_limit=self.config.memory_limit,
                 cpu_period=100000,
                 cpu_quota=int(100000 * self.config.cpu_limit),
-                network_mode="none" if not self.config.network_enabled else "bridge",
+                network_mode=None
+                if not self.config.network_enabled
+                else self.config.network_name,
                 binds=self._prepare_volume_bindings(),
             )
 
