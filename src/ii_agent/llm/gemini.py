@@ -106,7 +106,7 @@ class GeminiDirectClient(LLMClient):
                 system_instruction=system_prompt,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
-                tool_config=types.FunctionCallingConfig(mode="ANY")
+                tool_config={'function_calling_config': {'mode': 'ANY'}}
                 ),
             contents=gemini_messages,
         )
