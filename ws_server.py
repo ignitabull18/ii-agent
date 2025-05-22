@@ -39,6 +39,7 @@ from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
 from utils import parse_common_args, create_workspace_manager_for_connection
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
+from ii_agent.llm.base import LLMClient
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
 from ii_agent.utils.prompt_generator import enhance_user_prompt
@@ -97,6 +98,15 @@ async def websocket_endpoint(websocket: WebSocket):
     print(f"Workspace manager created: {workspace_manager}")
 
     try:
+        # Initialize LLM client
+        client = get_client(
+            "anthropic-direct",
+            model_name=DEFAULT_MODEL,
+            use_caching=False,
+            project_id=global_args.project_id,
+            region=global_args.region,
+        )
+        
         # Initial connection message with session info
         await websocket.send_json(
             RealtimeEvent(
@@ -121,7 +131,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Create a new agent for this connection
                     tool_args = content.get("tool_args", {})
                     agent = create_agent_for_connection(
-                        session_uuid, workspace_manager, websocket, tool_args
+                        client, session_uuid, workspace_manager, websocket, tool_args
                     )
                     active_agents[websocket] = agent
 
@@ -217,11 +227,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     
                     # Call the enhance_prompt function from the module
                     success, message, enhanced_prompt = await enhance_user_prompt(
+                        client=client,
                         user_input=user_input,
                         files=files,
-                        workspace_manager=workspace_manager,
-                        project_id=global_args.project_id,
-                        region=global_args.region
                     )
                     
                     if success and enhanced_prompt:
@@ -345,6 +353,7 @@ def cleanup_connection(websocket: WebSocket):
 
 
 def create_agent_for_connection(
+    client: LLMClient,
     session_id: uuid.UUID,
     workspace_manager: WorkspaceManager,
     websocket: WebSocket,
@@ -376,15 +385,6 @@ def create_agent_for_connection(
     )
     logger_for_agent_logs.info(
         f"Created new session {session_id} with workspace at {workspace_manager.root}"
-    )
-
-    # Initialize LLM client
-    client = get_client(
-        "anthropic-direct",
-        model_name=DEFAULT_MODEL,
-        use_caching=False,
-        project_id=global_args.project_id,
-        region=global_args.region,
     )
 
     # Initialize token counter

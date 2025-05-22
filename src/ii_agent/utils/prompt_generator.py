@@ -1,11 +1,8 @@
 import logging
-from pathlib import Path
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional
 
 from ii_agent.llm import get_client
-from ii_agent.llm.base import TextPrompt, TextResult
-from ii_agent.utils import WorkspaceManager
-from ii_agent.utils.constants import DEFAULT_MODEL
+from ii_agent.llm.base import TextPrompt, TextResult, LLMClient
 
 # Create a logger
 logger = logging.getLogger("prompt_generator")
@@ -13,12 +10,9 @@ logger.setLevel(logging.INFO)
 
 
 async def enhance_user_prompt(
+    client: LLMClient,
     user_input: str,
     files: List[str],
-    workspace_manager: WorkspaceManager,
-    project_id: Optional[str] = None,
-    region: Optional[str] = None,
-    model_name: str = DEFAULT_MODEL,
     temperature: float = 0.7,
     max_tokens: int = 2048,
 ) -> Tuple[bool, str, Optional[str]]:
@@ -26,12 +20,9 @@ async def enhance_user_prompt(
     Enhance a user request into a detailed, comprehensive prompt using an LLM.
 
     Args:
+        client: The LLM client
         user_input: The user's request text
         files: List of file paths to include as context
-        workspace_manager: WorkspaceManager instance for file access
-        project_id: Google Cloud project ID (for Vertex AI)
-        region: Google Cloud region (for Vertex AI)
-        model_name: Name of the LLM model to use
         temperature: Temperature setting for generation
         max_tokens: Maximum tokens to generate
 
@@ -39,15 +30,6 @@ async def enhance_user_prompt(
         Tuple of (success: bool, message: str, enhanced_prompt: Optional[str])
     """
     try:
-        # Initialize LLM client
-        client = get_client(
-            "anthropic-direct",
-            model_name=model_name,
-            use_caching=False,
-            project_id=project_id,
-            region=region,
-        )
-        
         # Prepare context from files if provided
         file_context = ""
         if files and len(files) > 0:
