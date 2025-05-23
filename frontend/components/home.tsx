@@ -69,6 +69,7 @@ export default function Home() {
     {}
   );
   const [browserUrl, setBrowserUrl] = useState("");
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
 
@@ -167,6 +168,23 @@ export default function Home() {
     // Set the device ID in state
     setDeviceId(existingDeviceId);
   }, []);
+
+  const handleEnhancePrompt = () => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      toast.error("WebSocket connection is not open. Please try again.");
+      return;
+    }
+    setIsGeneratingPrompt(true);
+    socket.send(
+      JSON.stringify({
+        type: "enhance_prompt",
+        content: {
+          text: currentQuestion,
+          files: uploadedFiles?.map((file) => `.${file}`),
+        },
+      })
+    );
+  };
 
   const handleClickAction = debounce(
     (data: ActionStep | undefined, showTabOnly = false) => {
@@ -478,6 +496,10 @@ export default function Home() {
           },
         ]);
 
+        break;
+      case AgentEvent.PROMPT_GENERATED:
+        setIsGeneratingPrompt(false);
+        setCurrentQuestion(data.content.result as string);
         break;
       case AgentEvent.PROCESSING:
         setIsLoading(true);
@@ -840,6 +862,8 @@ export default function Home() {
                 isUseDeepResearch={isUseDeepResearch}
                 setIsUseDeepResearch={setIsUseDeepResearch}
                 isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
+                isGeneratingPrompt={isGeneratingPrompt}
+                handleEnhancePrompt={handleEnhancePrompt}
               />
             ) : (
               <motion.div
@@ -870,6 +894,8 @@ export default function Home() {
                   handleKeyDown={handleKeyDown}
                   handleQuestionSubmit={handleQuestionSubmit}
                   handleFileUpload={handleFileUpload}
+                  isGeneratingPrompt={isGeneratingPrompt}
+                  handleEnhancePrompt={handleEnhancePrompt}
                 />
 
                 <div className="col-span-6 bg-[#1e1f23] border border-[#3A3B3F] p-4 rounded-2xl">

@@ -20,6 +20,7 @@ class EventType(str, enum.Enum):
     BROWSER_USE = "browser_use"
     FILE_EDIT = "file_edit"
     USER_MESSAGE = "user_message"
+    PROMPT_GENERATED = "prompt_generated"
 
 
 class RealtimeEvent(BaseModel):

@@ -4,6 +4,8 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useState, useEffect } from "react";
 import { getFileIconAndColor } from "@/utils/file-utils";
+import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface FileUploadStatus {
   name: string;
@@ -26,6 +28,8 @@ interface QuestionInputProps {
   isUseDeepResearch?: boolean;
   setIsUseDeepResearch?: (value: boolean) => void;
   isDisabled?: boolean;
+  isGeneratingPrompt?: boolean;
+  handleEnhancePrompt?: () => void;
 }
 
 const QuestionInput = ({
@@ -41,6 +45,8 @@ const QuestionInput = ({
   isUseDeepResearch = false,
   setIsUseDeepResearch,
   isDisabled,
+  isGeneratingPrompt = false,
+  handleEnhancePrompt,
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
 
@@ -241,13 +247,38 @@ const QuestionInput = ({
             )}
           </div>
 
-          <Button
-            disabled={!value.trim() || isDisabled}
-            onClick={() => handleSubmit(value)}
-            className="cursor-pointer !border !border-red p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
-          >
-            <ArrowUp className="size-5" />
-          </Button>
+          <div className="flex items-center gap-x-2">
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-gray-700/50 size-10 rounded-full cursor-pointer border border-[#ffffff0f] shadow-sm"
+                  onClick={handleEnhancePrompt}
+                  disabled={isGeneratingPrompt}
+                >
+                  {isGeneratingPrompt ? (
+                    <Loader2 className="size-5 text-gray-400 animate-spin" />
+                  ) : (
+                    <Image
+                      src="/icons/AI.svg"
+                      alt="Logo"
+                      width={24}
+                      height={24}
+                    />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Enhance Prompt</TooltipContent>
+            </Tooltip>
+            <Button
+              disabled={!value.trim() || isDisabled}
+              onClick={() => handleSubmit(value)}
+              className="cursor-pointer !border !border-red p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
+            >
+              <ArrowUp className="size-5" />
+            </Button>
+          </div>
         </div>
       </motion.div>
     </motion.div>
