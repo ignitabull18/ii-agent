@@ -19,5 +19,6 @@ __all__ = [
     "LLMClient",
     "OpenAIDirectClient",
     "AnthropicDirectClient",
+    "GeminiDirectClient",
     "get_client",
 ]

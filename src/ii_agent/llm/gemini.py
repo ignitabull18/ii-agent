@@ -33,10 +33,7 @@ class GeminiDirectClient(LLMClient):
         messages: LLMMessages,
         max_tokens: int,
         system_prompt: str | None = None,
-        temperature: float = 0.0,
         tools: list[ToolParam] = [],
-        tool_choice: dict[str, str] | None = None,
-        thinking_tokens: int | None = None,
     ) -> Tuple[list[AssistantContentBlock], dict[str, Any]]:
         
         gemini_messages = []
@@ -44,21 +41,21 @@ class GeminiDirectClient(LLMClient):
             role = "user" if idx % 2 == 0 else "model"
             message_content_list = []
             for message in message_list:
-                if str(type(message)) == str(TextPrompt):
+                if isinstance(message, TextPrompt):
                     message_content = types.Part(text=message.text)
-                elif str(type(message)) == str(ImageBlock):
+                elif isinstance(message, ImageBlock):
                     message_content = types.Part.from_bytes(
                             data=message.source["data"],
                             mime_type=message.source["media_type"],
                         )
-                elif str(type(message)) == str(TextResult):
+                elif isinstance(message, TextResult):
                     message_content = types.Part(text=message.text)
-                elif str(type(message)) == str(ToolCall):
+                elif isinstance(message, ToolCall):
                     message_content = types.Part.from_function_call(
                         name=message.tool_name,
                         args=message.tool_input,
                     )
-                elif str(type(message)) == str(ToolFormattedResult):
+                elif isinstance(message, ToolFormattedResult):
                     if isinstance(message.tool_output, str):
                         message_content = types.Part.from_function_response(
                             name=message.tool_name,
@@ -75,7 +72,7 @@ class GeminiDirectClient(LLMClient):
                                     mime_type=item['source']['media_type']
                                 ))
                 else:
-                    raise ValueError(f"Unknown message type: {type(message)}")
+                    raise ValueError(f"Unknown message type: {type(message).__name__}")
                 
                 if isinstance(message_content, list):
                     message_content_list.extend(message_content)
@@ -99,30 +96,35 @@ class GeminiDirectClient(LLMClient):
             )
         tool_params = types.Tool(function_declarations=tool_params)
 
+        config = types.GenerateContentConfig(
+            tools=[tool_params],
+            system_instruction=system_prompt,
+            max_output_tokens=max_tokens,
+            tool_config={'function_calling_config': {'mode': 'ANY'}},
+        )
         response = self.client.models.generate_content(
             model=self.model_name,
-            config=types.GenerateContentConfig(
-                tools=[tool_params],
-                system_instruction=system_prompt,
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                tool_config={'function_calling_config': {'mode': 'ANY'}}
-                ),
+            config=config,
             contents=gemini_messages,
         )
 
         internal_messages = []
-        if response.function_calls:
-            for fn_call in response.function_calls:
-                response_message_content = ToolCall(
-                    tool_call_id=fn_call.id,
-                    tool_name=fn_call.name,
-                    tool_input=fn_call.args,
-                )
-                internal_messages.append(response_message_content)
-
-        if response.text:
-            internal_messages.append(TextResult(text=response.text))
+        
+        # Process all parts in the response to avoid warnings
+        if response.candidates and len(response.candidates) > 0:
+            candidate = response.candidates[0]
+            if candidate.content and candidate.content.parts:
+                for part in candidate.content.parts:
+                    if part.text:
+                        internal_messages.append(TextResult(text=part.text))
+                    elif part.function_call:
+                        fn_call = part.function_call
+                        response_message_content = ToolCall(
+                            tool_call_id=fn_call.id if hasattr(fn_call, 'id') else None,
+                            tool_name=fn_call.name,
+                            tool_input=fn_call.args,
+                        )
+                        internal_messages.append(response_message_content)
 
         if len(internal_messages) == 0:
             raise ValueError("No response from Gemini")
