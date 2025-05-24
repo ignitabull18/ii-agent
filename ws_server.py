@@ -102,6 +102,8 @@ async def websocket_endpoint(websocket: WebSocket):
         client = get_client(
             "gemini-direct",
             model_name="gemini-2.5-pro-preview-05-06",
+            project_id=global_args.project_id,
+            region=global_args.region,
         )
         
         # Initial connection message with session info

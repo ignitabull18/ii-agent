@@ -95,6 +95,8 @@ async def async_main():
     client = get_client(
         "gemini-direct",
         model_name="gemini-2.5-pro-preview-05-06",
+        project_id=args.project_id,
+        region=args.region,
     )
 
     # Initialize workspace manager with the session-specific workspace
