@@ -39,8 +39,10 @@ from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
 from utils import parse_common_args, create_workspace_manager_for_connection
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
+from ii_agent.llm.base import LLMClient
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
+from ii_agent.utils.prompt_generator import enhance_user_prompt
 
 from fastapi.staticfiles import StaticFiles
 
@@ -96,6 +98,12 @@ async def websocket_endpoint(websocket: WebSocket):
     print(f"Workspace manager created: {workspace_manager}")
 
     try:
+        # Initialize LLM client
+        client = get_client(
+            "gemini-direct",
+            model_name="gemini-2.5-pro-preview-05-06",
+        )
+        
         # Initial connection message with session info
         await websocket.send_json(
             RealtimeEvent(
@@ -120,7 +128,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Create a new agent for this connection
                     tool_args = content.get("tool_args", {})
                     agent = create_agent_for_connection(
-                        session_uuid, workspace_manager, websocket, tool_args
+                        client, session_uuid, workspace_manager, websocket, tool_args
                     )
                     active_agents[websocket] = agent
 
@@ -206,6 +214,38 @@ async def websocket_endpoint(websocket: WebSocket):
                             RealtimeEvent(
                                 type=EventType.ERROR,
                                 content={"message": "No active query to cancel"},
+                            ).model_dump()
+                        )
+
+                elif msg_type == "enhance_prompt":
+                    # Process a request to enhance a prompt using an LLM
+                    user_input = content.get("text", "")
+                    files = content.get("files", [])
+                    
+                    # Call the enhance_prompt function from the module
+                    success, message, enhanced_prompt = await enhance_user_prompt(
+                        client=client,
+                        user_input=user_input,
+                        files=files,
+                    )
+                    
+                    if success and enhanced_prompt:
+                        # Send the enhanced prompt back to the client
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.PROMPT_GENERATED,
+                                content={
+                                    "result": enhanced_prompt,
+                                    "original_request": user_input,
+                                },
+                            ).model_dump()
+                        )
+                    else:
+                        # Send error message
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.ERROR,
+                                content={"message": message},
                             ).model_dump()
                         )
 
@@ -310,6 +350,7 @@ def cleanup_connection(websocket: WebSocket):
 
 
 def create_agent_for_connection(
+    client: LLMClient,
     session_id: uuid.UUID,
     workspace_manager: WorkspaceManager,
     websocket: WebSocket,
@@ -341,12 +382,6 @@ def create_agent_for_connection(
     )
     logger_for_agent_logs.info(
         f"Created new session {session_id} with workspace at {workspace_manager.root}"
-    )
-
-    # Initialize LLM client
-    client = get_client(
-        "gemini-direct",
-        model_name="gemini-2.5-pro-preview-05-06",
     )
 
     # Initialize token counter
