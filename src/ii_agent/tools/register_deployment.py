@@ -1,5 +1,4 @@
 from typing import Any, Optional
-import os
 
 from ii_agent.tools.base import (
     ToolImplOutput,
@@ -18,28 +17,24 @@ class RegisterDeploymentTool(LLMTool):
     input_schema = {
         "type": "object",
         "properties": {
-            "service_name": {
+            "port": {
                 "type": "string",
-                "description": "Name of the service to deploy and used in the public url, this must be unique",
+                "description": "Port that you can deploy your service on",
             },
         },
-        "required": ["service_name"],
+        "required": ["port"],
     }
 
     def __init__(self, workspace_manager: WorkspaceManager):
         super().__init__()
         self.workspace_manager = workspace_manager
-        # TODO: this is a hack to get the base URL for the static files
-        # TODO: we should use a proper URL for the static files
-        default_base_url = f"file://{workspace_manager.root.parent.parent.absolute()}"
-        self.base_url = os.getenv("STATIC_FILE_BASE_URL", default_base_url)
 
     def run_impl(
         self,
         tool_input: dict[str, Any],
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
-        service_name = tool_input["service_name"]
+        port = tool_input["port"]
         # Make request to register service
         import httpx
 
@@ -47,7 +42,7 @@ class RegisterDeploymentTool(LLMTool):
         response = client.post(
             "http://localhost:9000/api/register",
             json={
-                "service_name": service_name,
+                "port": port,
                 "container_name": self.workspace_manager.root.name,
             },
         )
@@ -62,9 +57,9 @@ class RegisterDeploymentTool(LLMTool):
         connection_uuid = self.workspace_manager.root.name
 
         # Construct the public URL using the base URL and connection UUID
-        public_url = f"/agent/{connection_uuid}/{service_name}"
+        public_url = f"http://{connection_uuid}-{port}.127.0.0.1.nip.io"
 
         return ToolImplOutput(
             public_url,
-            f"Registering successfully. Public url/base path to access the service: {public_url}.  service port: 8000",
+            f"Registering successfully. Public url/base path to access the service: {public_url}",
         )

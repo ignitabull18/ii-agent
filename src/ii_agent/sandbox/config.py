@@ -4,7 +4,9 @@ from pydantic import BaseModel, Field
 class SandboxSettings(BaseModel):
     """Configuration for the execution sandbox"""
 
-    image: str = Field("python:3.12-slim", description="Base image")
+    image: str = Field(
+        "nikolaik/python-nodejs:python3.10-nodejs20-slim", description="Base image"
+    )
     work_dir: str = Field("/root/", description="Container working directory")
     memory_limit: str = Field("1024mb", description="Memory limit")
     cpu_limit: float = Field(1.0, description="CPU limit")

@@ -8,6 +8,8 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY proxy_server/main.py ./proxy_server/
 
+# Install dependencies
+RUN pip install aiohttp
 
 # Set environment variables
 ENV PYTHONPATH=/app
