@@ -66,6 +66,16 @@ class GeminiDirectClient(LLMClient):
         # Process all parts in the response to avoid warnings
         if response.candidates and len(response.candidates) > 0:
             candidate = response.candidates[0]
+            
+            # Check for malformed function call
+            if hasattr(candidate, 'finish_message') and candidate.finish_message:
+                if 'Malformed function call' in candidate.finish_message:
+                    logger.error(f"Gemini returned malformed function call: {candidate.finish_message}")
+                    # Extract the error message and return it as text to help debug
+                    error_msg = f"Gemini encountered an error with the function call: {candidate.finish_message[:500]}..."
+                    internal_messages.append(TextResult(text=error_msg))
+                    return internal_messages
+            
             if candidate.content and candidate.content.parts:
                 for part in candidate.content.parts:
                     if part.text:
@@ -80,6 +90,12 @@ class GeminiDirectClient(LLMClient):
                         internal_messages.append(response_message_content)
 
         if len(internal_messages) == 0:
+            # Log more details for debugging
+            logger.error(f"No valid response from Gemini. Response: {response}")
+            if response.candidates:
+                for i, candidate in enumerate(response.candidates):
+                    logger.error(f"Candidate {i}: finish_reason={getattr(candidate, 'finish_reason', 'N/A')}, "
+                               f"finish_message={getattr(candidate, 'finish_message', 'N/A')}")
             raise ValueError("No response from Gemini")
             
         return internal_messages
@@ -173,26 +189,60 @@ class GeminiDirectClient(LLMClient):
                     config=config,
                     contents=gemini_messages,
                 )
+                
+                # Check if we got a malformed function call
+                if (response.candidates and len(response.candidates) > 0 and 
+                    hasattr(response.candidates[0], 'finish_message') and 
+                    response.candidates[0].finish_message and
+                    'Malformed function call' in response.candidates[0].finish_message):
+                    
+                    logger.warning(f"Received malformed function call on attempt {attempt + 1}/{self.max_retries}")
+                    
+                    # If we have tools and this is not the last attempt, retry without problematic tools
+                    if tools and attempt < self.max_retries - 1:
+                        # Remove tools that commonly cause issues
+                        problematic_tools = ["SequentialThinkingTool", "str_replace_editor"]
+                        filtered_tools = [tool for tool in tools if tool.name not in problematic_tools]
+                        
+                        if filtered_tools:
+                            filtered_tool_params = []
+                            for tool in filtered_tools:
+                                filtered_tool_params.append(
+                                    {
+                                        "name": tool.name,
+                                        "description": tool.description,
+                                        "parameters": tool.input_schema,
+                                    }
+                                )
+                            filtered_tool_params = types.Tool(function_declarations=filtered_tool_params)
+                            config = types.GenerateContentConfig(
+                                tools=[filtered_tool_params],
+                                system_instruction=system_prompt,
+                                max_output_tokens=max_tokens,
+                                tool_config={'function_calling_config': {'mode': 'ANY'}},
+                            )
+                        else:
+                            # If no tools left, try without tools
+                            config = types.GenerateContentConfig(
+                                system_instruction=system_prompt,
+                                max_output_tokens=max_tokens,
+                            )
+                        
+                        wait_time = self.retry_delay * (2 ** attempt)
+                        logger.info(f"Retrying without problematic tools in {wait_time} seconds...")
+                        time.sleep(wait_time)
+                        continue
+                
                 internal_messages = self._process_gemini_response(response)
+                return internal_messages, {
+                    "raw_response": response,
+                    "input_tokens": response.usage_metadata.prompt_token_count,
+                    "output_tokens": response.usage_metadata.candidates_token_count,
+                    "cache_creation_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                }
+                
             except Exception as e:
-                # remove SequentialThinkingTool, most likely because of FinishReason.MALFORMED_FUNCTION_CALL
-                filtered_tools = [tool for tool in tools if tool.name != "SequentialThinkingTool"]
-                filtered_tool_params = []
-                for tool in filtered_tools:
-                    filtered_tool_params.append(
-                        {
-                            "name": tool.name,
-                            "description": tool.description,
-                            "parameters": tool.input_schema,
-                        }
-                    )
-                filtered_tool_params = types.Tool(function_declarations=filtered_tool_params)
-                config = types.GenerateContentConfig(
-                    tools=[filtered_tool_params],
-                    system_instruction=system_prompt,
-                    max_output_tokens=max_tokens,
-                    tool_config={'function_calling_config': {'mode': 'ANY'}},
-                )
                 last_error = e
                 if attempt < self.max_retries - 1:
                     wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
@@ -204,14 +254,9 @@ class GeminiDirectClient(LLMClient):
                 else:
                     logger.error(f"Gemini API call failed after {self.max_retries} attempts: {e}")
                     raise
-
-
-        message_metadata = {
-            "raw_response": response,
-            "input_tokens": response.usage_metadata.prompt_token_count,
-            "output_tokens": response.usage_metadata.candidates_token_count,
-            "cache_creation_input_tokens": 0,
-            "cache_read_input_tokens": 0,
-        }
         
-        return internal_messages, message_metadata
+        # This should not be reached, but just in case
+        if last_error:
+            raise last_error
+        else:
+            raise ValueError("Failed to get response from Gemini after all retries")
