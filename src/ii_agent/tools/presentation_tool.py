@@ -280,50 +280,73 @@ action = init
                     auxiliary_data={"success": True},
                 )
 
-            if len(pending_tool_calls) > 1:
-                raise ValueError("Only one tool call per turn is supported")
-
-            assert len(pending_tool_calls) == 1
-            tool_call = pending_tool_calls[0]
-            self.message_queue.put_nowait(
-                RealtimeEvent(
-                    type=EventType.TOOL_CALL,
-                    content={
-                        "tool_call_id": tool_call.tool_call_id,
-                        "tool_name": tool_call.tool_name,
-                        "tool_input": tool_call.tool_input,
-                    },
+            # Process all pending tool calls
+            tool_results = []
+            tool_calls_params = []
+            
+            for tool_call in pending_tool_calls:
+                self.message_queue.put_nowait(
+                    RealtimeEvent(
+                        type=EventType.TOOL_CALL,
+                        content={
+                            "tool_call_id": tool_call.tool_call_id,
+                            "tool_name": tool_call.tool_name,
+                            "tool_input": tool_call.tool_input,
+                        },
+                    )
                 )
-            )
 
-            try:
-                tool = next(t for t in self.tools if t.name == tool_call.tool_name)
-            except StopIteration as exc:
-                raise ValueError(
-                    f"Tool with name {tool_call.tool_name} not found"
-                ) from exc
+                try:
+                    tool = next(t for t in self.tools if t.name == tool_call.tool_name)
+                except StopIteration as exc:
+                    raise ValueError(
+                        f"Tool with name {tool_call.tool_name} not found"
+                    ) from exc
 
-            # Execute the tool
-            result = tool.run(tool_call.tool_input, deepcopy(self.history))
+                # Execute the tool
+                # Create a clean history for sub-tools that ends at user's turn
+                # by excluding the current assistant turn with pending tool calls
+                clean_history = MessageHistory()
+                messages = self.history.get_messages_for_llm()
+                
+                # Ensure we have a history that ends at user's turn
+                # The history alternates between user and assistant turns (user at even indices)
+                if len(messages) > 0:
+                    # If we have an odd number of messages, the last one is an assistant turn
+                    # We need to exclude it to end at a user turn
+                    if len(messages) % 2 == 1:
+                        clean_history.set_message_list(messages[:-1])
+                    else:
+                        # Already ends at user turn
+                        clean_history.set_message_list(messages)
+                
+                # Only pass history if it's not empty
+                result = tool.run(tool_call.tool_input, clean_history if len(clean_history) > 0 else None)
 
-            # Handle both string results and tuples
-            if isinstance(result, tuple):
-                tool_result, _ = result
-            else:
-                tool_result = result
+                # Handle both string results and tuples
+                if isinstance(result, tuple):
+                    tool_result, _ = result
+                else:
+                    tool_result = result
 
-            self.history.add_tool_call_result(tool_call, tool_result)
+                # Collect results instead of adding them immediately
+                tool_results.append(tool_result)
+                tool_calls_params.append(tool_call)
 
-            self.message_queue.put_nowait(
-                RealtimeEvent(
-                    type=EventType.TOOL_RESULT,
-                    content={
-                        "tool_call_id": tool_call.tool_call_id,
-                        "tool_name": tool_call.tool_name,
-                        "result": tool_result,
-                    },
+                self.message_queue.put_nowait(
+                    RealtimeEvent(
+                        type=EventType.TOOL_RESULT,
+                        content={
+                            "tool_call_id": tool_call.tool_call_id,
+                            "tool_name": tool_call.tool_name,
+                            "result": tool_result,
+                        },
+                    )
                 )
-            )
+            
+            # After processing all tool calls, add all results at once
+            if tool_results:
+                self.history.add_tool_call_results(tool_calls_params, tool_results)
 
         # If we exit the loop without returning, we've hit max turns
         return ToolImplOutput(
