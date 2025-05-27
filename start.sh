@@ -35,4 +35,4 @@ export PROJECT_ID=
 export REGION=
 
 # Start docker-compose with the HOST_IP variable
-docker-compose -f docker/docker-compose.yaml up "$@"
+COMPOSE_PROJECT_NAME=agent docker compose -f docker/docker-compose.yaml up "$@"
