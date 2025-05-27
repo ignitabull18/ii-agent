@@ -21,6 +21,7 @@ fi
 
 echo "Using HOST_IP: $HOST_IP"
 export PUBLIC_DOMAIN=${HOST_IP}.nip.io
+export NEXT_PUBLIC_API_URL=http://localhost:8000
 
 export PROXY_SERVER_PORT=9000
 export FRONTEND_PORT=3000
