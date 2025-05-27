@@ -4,18 +4,16 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY pyproject.toml .
-COPY proxy_server/main.py ./proxy_server/
+COPY docker/proxy_server/main.py .
 
 # Install dependencies
-RUN pip install aiohttp
+RUN pip install aiohttp Brotli
 
 # Set environment variables
 ENV PYTHONPATH=/app
 
-# Expose port 8000
+# Expose port 9000
 EXPOSE 8000
 
 # Override the default CMD from the base image to directly run our app
-CMD ["uvicorn", "proxy_server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

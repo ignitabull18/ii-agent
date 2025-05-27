@@ -45,6 +45,14 @@ class DockerSandbox:
         self.container: Optional[Container] = None
         self.container_id: Optional[str] = None
 
+    async def run_command(self, command: str) -> None:
+        """Runs a command in the sandbox container.
+
+        Args:
+            command: Command to run.
+        """
+        pass
+
     async def create(self):
         """Creates and starts the sandbox container.
 
@@ -55,6 +63,7 @@ class DockerSandbox:
             docker.errors.APIError: If Docker API call fails.
             RuntimeError: If container creation or startup fails.
         """
+        os.makedirs(self.config.work_dir, exist_ok=True)
         try:
             # Prepare container config
             host_config = self.client.api.create_host_config(

@@ -1,4 +1,5 @@
 from typing import Any, Optional
+import os
 
 from ii_agent.tools.base import (
     ToolImplOutput,
@@ -40,7 +41,7 @@ class RegisterDeploymentTool(LLMTool):
 
         client = httpx.Client()
         response = client.post(
-            "http://localhost:9000/api/register",
+            f"{os.getenv('PROXY_SERVER_URL')}/api/register",
             json={
                 "port": port,
                 "container_name": self.workspace_manager.root.name,
@@ -57,7 +58,7 @@ class RegisterDeploymentTool(LLMTool):
         connection_uuid = self.workspace_manager.root.name
 
         # Construct the public URL using the base URL and connection UUID
-        public_url = f"http://{connection_uuid}-{port}.127.0.0.1.nip.io"
+        public_url = f"http://{connection_uuid}-{port}.{os.getenv('PUBLIC_DOMAIN')}"
 
         return ToolImplOutput(
             public_url,

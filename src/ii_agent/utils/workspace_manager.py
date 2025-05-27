@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional
 from ii_agent.sandbox.config import SandboxSettings
@@ -16,7 +17,9 @@ class WorkspaceManager:
         await DockerSandbox(
             container_name=self.container_workspace.name,
             config=settings,
-            volume_bindings={self.root: settings.work_dir},
+            volume_bindings={
+                os.getenv("WORKSPACE_ROOT") + "/" + self.root.name: settings.work_dir
+            },
         ).create()
 
     def workspace_path(self, path: Path | str) -> Path:
