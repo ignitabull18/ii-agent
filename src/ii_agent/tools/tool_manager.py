@@ -72,7 +72,6 @@ def get_system_tools(
         SequentialThinkingTool(),
         WebSearchTool(),
         VisitWebpageTool(),
-        RegisterDeploymentTool(workspace_manager=workspace_manager),
         StrReplaceEditorTool(
             workspace_manager=workspace_manager, message_queue=message_queue
         ),
@@ -84,6 +83,9 @@ def get_system_tools(
             message_queue=message_queue,
         ),
     ]
+    if container_id is not None:
+        tools.append(RegisterDeploymentTool(workspace_manager=workspace_manager))
+
     image_search_tool = ImageSearchTool()
     if image_search_tool.is_available():
         tools.append(image_search_tool)
