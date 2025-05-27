@@ -58,6 +58,7 @@ export default function Home() {
   const [activeFileCodeEditor, setActiveFileCodeEditor] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   const [workspaceInfo, setWorkspaceInfo] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
@@ -69,6 +70,8 @@ export default function Home() {
     {}
   );
   const [browserUrl, setBrowserUrl] = useState("");
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<Message>();
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
 
@@ -109,9 +112,10 @@ export default function Home() {
             for (let i = 0; i < data.events.length; i++) {
               const event = data.events[i];
               // Process each event with a 2-second delay
-              await new Promise((resolve) => setTimeout(resolve, 1500));
+              await new Promise((resolve) => setTimeout(resolve, 50));
               handleEvent({ ...event.event_payload, id: event.id });
             }
+            setIsLoading(false);
           };
 
           // Start processing events with delay
@@ -166,6 +170,23 @@ export default function Home() {
     // Set the device ID in state
     setDeviceId(existingDeviceId);
   }, []);
+
+  const handleEnhancePrompt = () => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      toast.error("WebSocket connection is not open. Please try again.");
+      return;
+    }
+    setIsGeneratingPrompt(true);
+    socket.send(
+      JSON.stringify({
+        type: "enhance_prompt",
+        content: {
+          text: currentQuestion,
+          files: uploadedFiles?.map((file) => `.${file}`),
+        },
+      })
+    );
+  };
 
   const handleClickAction = debounce(
     (data: ActionStep | undefined, showTabOnly = false) => {
@@ -247,6 +268,7 @@ export default function Home() {
     setIsLoading(true);
     setCurrentQuestion("");
     setIsCompleted(false);
+    setIsStopped(false);
 
     if (!sessionId) {
       const id = `${workspaceInfo}`.split("/").pop();
@@ -317,6 +339,7 @@ export default function Home() {
     setMessages([]);
     setIsLoading(false);
     setIsCompleted(false);
+    setIsStopped(false);
   };
 
   const handleOpenVSCode = () => {
@@ -331,6 +354,46 @@ export default function Home() {
     } catch {
       return null;
     }
+  };
+
+  const handleEditMessage = (newQuestion: string) => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      toast.error("WebSocket connection is not open. Please try again.");
+      setIsLoading(false);
+      return;
+    }
+
+    socket.send(
+      JSON.stringify({
+        type: "edit_query",
+        content: {
+          text: newQuestion,
+          files: uploadedFiles?.map((file) => `.${file}`),
+        },
+      })
+    );
+
+    // Update the edited message and remove all subsequent messages
+    setMessages((prev) => {
+      // Find the index of the message being edited
+      const editIndex = prev.findIndex((m) => m.id === editingMessage?.id);
+      if (editIndex >= 0) {
+        // Create a new array with messages up to and including the edited one
+        const updatedMessages = prev.slice(0, editIndex + 1);
+        // Update the content of the edited message
+        updatedMessages[editIndex] = {
+          ...updatedMessages[editIndex],
+          content: newQuestion,
+        };
+        return updatedMessages;
+      }
+      return prev;
+    });
+
+    setIsCompleted(false);
+    setIsStopped(false);
+    setIsLoading(true);
+    setEditingMessage(undefined);
   };
 
   const handleFileUpload = async (
@@ -478,6 +541,10 @@ export default function Home() {
         ]);
 
         break;
+      case AgentEvent.PROMPT_GENERATED:
+        setIsGeneratingPrompt(false);
+        setCurrentQuestion(data.content.result as string);
+        break;
       case AgentEvent.PROCESSING:
         setIsLoading(true);
         break;
@@ -505,6 +572,17 @@ export default function Home() {
               role: "assistant",
               content: (data.content.tool_input as { thought: string })
                 .thought as string,
+              timestamp: Date.now(),
+            },
+          ]);
+        } else if (data.content.tool_name === TOOL.MESSAGE_USER) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: data.id,
+              role: "assistant",
+              content: (data.content.tool_input as { text: string })
+                .text as string,
               timestamp: Date.now(),
             },
           ]);
@@ -588,7 +666,12 @@ export default function Home() {
             },
           ]);
         } else {
-          if (data.content.tool_name !== TOOL.SEQUENTIAL_THINKING && data.content.tool_name !== TOOL.PRESENTATION) { // TODO: Implement helper function to handle tool results
+          if (
+            data.content.tool_name !== TOOL.SEQUENTIAL_THINKING &&
+            data.content.tool_name !== TOOL.PRESENTATION &&
+            data.content.tool_name !== TOOL.MESSAGE_USER
+          ) {
+            // TODO: Implement helper function to handle tool results
             setMessages((prev) => {
               const lastMessage = cloneDeep(prev[prev.length - 1]);
               if (
@@ -682,6 +765,23 @@ export default function Home() {
     const url = `${window.location.origin}/?id=${sessionId}`;
     navigator.clipboard.writeText(url);
     toast.success("Copied to clipboard");
+  };
+
+  const handleCancelQuery = () => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      toast.error("WebSocket connection is not open.");
+      return;
+    }
+
+    // Send cancel message to the server
+    socket.send(
+      JSON.stringify({
+        type: "cancel",
+        content: {},
+      })
+    );
+    setIsLoading(false);
+    setIsStopped(true);
   };
 
   useEffect(() => {
@@ -835,6 +935,8 @@ export default function Home() {
                 isUseDeepResearch={isUseDeepResearch}
                 setIsUseDeepResearch={setIsUseDeepResearch}
                 isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
+                isGeneratingPrompt={isGeneratingPrompt}
+                handleEnhancePrompt={handleEnhancePrompt}
               />
             ) : (
               <motion.div
@@ -854,6 +956,7 @@ export default function Home() {
                   messages={messages}
                   isLoading={isLoading}
                   isCompleted={isCompleted}
+                  isStopped={isStopped}
                   workspaceInfo={workspaceInfo}
                   handleClickAction={handleClickAction}
                   isUploading={isUploading}
@@ -865,6 +968,12 @@ export default function Home() {
                   handleKeyDown={handleKeyDown}
                   handleQuestionSubmit={handleQuestionSubmit}
                   handleFileUpload={handleFileUpload}
+                  isGeneratingPrompt={isGeneratingPrompt}
+                  handleEnhancePrompt={handleEnhancePrompt}
+                  handleCancel={handleCancelQuery}
+                  editingMessage={editingMessage}
+                  setEditingMessage={setEditingMessage}
+                  handleEditMessage={handleEditMessage}
                 />
 
                 <div className="col-span-6 bg-[#1e1f23] border border-[#3A3B3F] p-4 rounded-2xl">

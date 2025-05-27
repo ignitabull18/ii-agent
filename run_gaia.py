@@ -312,6 +312,7 @@ async def answer_single_question(
         max_output_tokens_per_turn=32768,
         max_turns=200,
         session_id=session_id,  # Pass the session_id from database manager
+        interactive_mode=False, # Run until the task is completed
     )
 
     # Create background task for message processing

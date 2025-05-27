@@ -12,6 +12,7 @@ class EventType(str, enum.Enum):
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     AGENT_RESPONSE = "agent_response"
+    AGENT_RESPONSE_INTERRUPTED = "agent_response_interrupted"
     STREAM_COMPLETE = "stream_complete"
     ERROR = "error"
     SYSTEM = "system"
@@ -20,6 +21,7 @@ class EventType(str, enum.Enum):
     BROWSER_USE = "browser_use"
     FILE_EDIT = "file_edit"
     USER_MESSAGE = "user_message"
+    PROMPT_GENERATED = "prompt_generated"
 
 
 class RealtimeEvent(BaseModel):

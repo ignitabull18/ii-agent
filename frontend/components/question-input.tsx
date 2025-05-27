@@ -4,6 +4,8 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useState, useEffect } from "react";
 import { getFileIconAndColor } from "@/utils/file-utils";
+import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface FileUploadStatus {
   name: string;
@@ -26,6 +28,10 @@ interface QuestionInputProps {
   isUseDeepResearch?: boolean;
   setIsUseDeepResearch?: (value: boolean) => void;
   isDisabled?: boolean;
+  isGeneratingPrompt?: boolean;
+  handleEnhancePrompt?: () => void;
+  isLoading?: boolean;
+  handleCancel?: () => void;
 }
 
 const QuestionInput = ({
@@ -41,6 +47,10 @@ const QuestionInput = ({
   isUseDeepResearch = false,
   setIsUseDeepResearch,
   isDisabled,
+  isGeneratingPrompt = false,
+  handleEnhancePrompt,
+  isLoading = false,
+  handleCancel,
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
 
@@ -208,7 +218,7 @@ const QuestionInput = ({
                   onClick={() =>
                     document.getElementById("file-upload")?.click()
                   }
-                  disabled={isUploading}
+                  disabled={isUploading || isLoading}
                 >
                   {isUploading ? (
                     <Loader2 className="size-5 text-gray-400 animate-spin" />
@@ -222,7 +232,7 @@ const QuestionInput = ({
                   multiple
                   className="hidden"
                   onChange={handleFileChange}
-                  disabled={isUploading}
+                  disabled={isUploading || isLoading}
                 />
               </label>
             )}
@@ -235,19 +245,54 @@ const QuestionInput = ({
                     : "border !border-[#ffffff0f] bg-transparent"
                 }`}
                 onClick={() => setIsUseDeepResearch?.(!isUseDeepResearch)}
+                disabled={isLoading}
               >
                 Deep Research
               </Button>
             )}
           </div>
 
-          <Button
-            disabled={!value.trim() || isDisabled}
-            onClick={() => handleSubmit(value)}
-            className="cursor-pointer !border !border-red p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
-          >
-            <ArrowUp className="size-5" />
-          </Button>
+          <div className="flex items-center gap-x-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-gray-700/50 size-10 rounded-full cursor-pointer border border-[#ffffff0f] shadow-sm"
+                  onClick={handleEnhancePrompt}
+                  disabled={isGeneratingPrompt}
+                >
+                  {isGeneratingPrompt ? (
+                    <Loader2 className="size-5 text-gray-400 animate-spin" />
+                  ) : (
+                    <Image
+                      src="/icons/AI.svg"
+                      alt="Logo"
+                      width={24}
+                      height={24}
+                    />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Enhance Prompt</TooltipContent>
+            </Tooltip>
+            {isLoading && handleCancel ? (
+              <Button
+                onClick={handleCancel}
+                className="cursor-pointer size-10 font-bold p-0 !bg-black rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
+              >
+                <div className="size-3 rounded-xs bg-white" />
+              </Button>
+            ) : (
+              <Button
+                disabled={!value.trim() || isDisabled || isLoading}
+                onClick={() => handleSubmit(value)}
+                className="cursor-pointer !border !border-red p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
+              >
+                <ArrowUp className="size-5" />
+              </Button>
+            )}
+          </div>
         </div>
       </motion.div>
     </motion.div>

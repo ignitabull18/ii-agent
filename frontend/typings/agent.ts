@@ -25,10 +25,12 @@ export enum AgentEvent {
   UPLOAD_SUCCESS = "upload_success",
   BROWSER_USE = "browser_use",
   FILE_EDIT = "file_edit",
+  PROMPT_GENERATED = "prompt_generated",
 }
 
 export enum TOOL {
   SEQUENTIAL_THINKING = "sequential_thinking",
+  MESSAGE_USER = "message_user",
   STR_REPLACE_EDITOR = "str_replace_editor",
   BROWSER_USE = "browser_use",
   PRESENTATION = "presentation",
@@ -45,6 +47,7 @@ export enum TOOL {
   IMAGE_GENERATE = "generate_image_from_text",
   DEEP_RESEARCH = "deep_research",
   LIST_HTML_LINKS = "list_html_links",
+  RETURN_CONTROL_TO_USER = "return_control_to_user",
   // browser tools
   BROWSER_VIEW = "browser_view",
   BROWSER_NAVIGATION = "browser_navigation",

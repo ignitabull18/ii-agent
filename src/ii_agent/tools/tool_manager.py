@@ -13,7 +13,8 @@ from ii_agent.tools.web_search_tool import WebSearchTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
 from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
 from ii_agent.tools.sequential_thinking_tool import SequentialThinkingTool
-from ii_agent.tools.complete_tool import CompleteTool
+from ii_agent.tools.message_tool import MessageTool
+from ii_agent.tools.complete_tool import CompleteTool, ReturnControlToUserTool
 from ii_agent.tools.bash_tool import create_bash_tool, create_docker_bash_tool
 from ii_agent.browser.browser import Browser
 from ii_agent.utils import WorkspaceManager
@@ -69,7 +70,7 @@ def get_system_tools(
         )
 
     tools = [
-        SequentialThinkingTool(),
+        MessageTool(),
         WebSearchTool(),
         VisitWebpageTool(),
         StrReplaceEditorTool(
@@ -92,6 +93,8 @@ def get_system_tools(
 
     # Conditionally add tools based on tool_args
     if tool_args:
+        if tool_args.get("sequential_thinking", False):
+            tools.append(SequentialThinkingTool())
         if tool_args.get("deep_research", False):
             tools.append(DeepResearchTool())
         if tool_args.get("pdf", False):
@@ -153,9 +156,9 @@ class AgentToolManager:
     search capabilities, and task completion functionality.
     """
 
-    def __init__(self, tools: List[LLMTool], logger_for_agent_logs: logging.Logger):
+    def __init__(self, tools: List[LLMTool], logger_for_agent_logs: logging.Logger, interactive_mode: bool = True):
         self.logger_for_agent_logs = logger_for_agent_logs
-        self.complete_tool = CompleteTool()
+        self.complete_tool = ReturnControlToUserTool() if interactive_mode else CompleteTool()
         self.tools = tools
 
     def get_tool(self, tool_name: str) -> LLMTool:

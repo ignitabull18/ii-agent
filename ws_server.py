@@ -39,8 +39,10 @@ from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
 from utils import parse_common_args, create_workspace_manager_for_connection
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
+from ii_agent.llm.base import LLMClient
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
+from ii_agent.utils.prompt_generator import enhance_user_prompt
 
 from fastapi.staticfiles import StaticFiles
 
@@ -49,7 +51,7 @@ from ii_agent.llm.context_manager.standard import StandardContextManager
 from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
-from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
+from ii_agent.prompts.system_prompt import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_SEQ_THINKING
 
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
@@ -95,7 +97,7 @@ async def websocket_endpoint(websocket: WebSocket):
     )
     print(f"Workspace manager created: {workspace_manager}")
 
-    try:
+    try:    
         # Initial connection message with session info
         await websocket.send_json(
             RealtimeEvent(
@@ -117,10 +119,20 @@ async def websocket_endpoint(websocket: WebSocket):
                 content = message.get("content", {})
 
                 if msg_type == "init_agent":
+                    # Initialize LLM client
+                    client = get_client(
+                        "anthropic-direct",
+                        model_name=DEFAULT_MODEL,
+                        use_caching=False,
+                        project_id=global_args.project_id,
+                        region=global_args.region,
+                        thinking_tokens=content.get("thinking_tokens", 2048),
+                    )
+
                     # Create a new agent for this connection
                     tool_args = content.get("tool_args", {})
                     agent = create_agent_for_connection(
-                        session_uuid, workspace_manager, websocket, tool_args
+                        client, session_uuid, workspace_manager, websocket, tool_args
                     )
                     active_agents[websocket] = agent
 
@@ -192,20 +204,157 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
 
                 elif msg_type == "cancel":
-                    # Cancel the current agent task if one exists
-                    if websocket in active_tasks and not active_tasks[websocket].done():
-                        active_tasks[websocket].cancel()
+                    # Get the agent for this connection
+                    agent = active_agents.get(websocket)
+                    if not agent:
                         await websocket.send_json(
                             RealtimeEvent(
-                                type=EventType.SYSTEM,
-                                content={"message": "Query canceled"},
+                                type=EventType.ERROR,
+                                content={
+                                    "message": "No active agent for this connection"
+                                },
                             ).model_dump()
                         )
+                        continue
+
+                    agent.cancel()
+
+                    # Send acknowledgment that cancellation was received
+                    await websocket.send_json(
+                        RealtimeEvent(
+                            type=EventType.SYSTEM,
+                            content={"message": "Query cancelled"},
+                        ).model_dump()
+                    )
+
+                elif msg_type == "edit_query":
+                    # Get the agent for this connection
+                    agent = active_agents.get(websocket)
+                    if not agent:
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.ERROR,
+                                content={
+                                    "message": "No active agent for this connection"
+                                },
+                            ).model_dump()
+                        )
+                        continue
+
+                    # Cancel the agent
+                    agent.cancel()
+
+                    # Clear the agent's history from last turn to last user message
+                    agent.history.clear_from_last_to_user_message()
+
+                    # Delete events from database up to last user message if we have a session ID
+                    if agent.session_id:
+                        try:
+                            agent.db_manager.delete_events_from_last_to_user_message(
+                                agent.session_id
+                            )
+                            await websocket.send_json(
+                                RealtimeEvent(
+                                    type=EventType.SYSTEM,
+                                    content={
+                                        "message": "Session history cleared from last event to last user message"
+                                    },
+                                ).model_dump()
+                            )
+                        except Exception as e:
+                            logger.error(f"Error deleting session events: {str(e)}")
+                            await websocket.send_json(
+                                RealtimeEvent(
+                                    type=EventType.ERROR,
+                                    content={
+                                        "message": f"Error clearing history: {str(e)}"
+                                    },
+                                ).model_dump()
+                            )
                     else:
                         await websocket.send_json(
                             RealtimeEvent(
                                 type=EventType.ERROR,
-                                content={"message": "No active query to cancel"},
+                                content={"message": "No active session to clear"},
+                            ).model_dump()
+                        )
+
+                    # Send acknowledgment that query editing was received
+                    await websocket.send_json(
+                        RealtimeEvent(
+                            type=EventType.SYSTEM,
+                            content={"message": "Query editing mode activated"},
+                        ).model_dump()
+                    )
+
+                    # Check if there's an active task for this connection
+                    if websocket in active_tasks and not active_tasks[websocket].done():
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.ERROR,
+                                content={
+                                    "message": "A query is already being processed"
+                                },
+                            ).model_dump()
+                        )
+                        continue
+
+                    # Process a query to the agent
+                    user_input = content.get("text", "")
+                    resume = content.get("resume", False)
+                    files = content.get("files", [])
+
+                    # Send acknowledgment
+                    await websocket.send_json(
+                        RealtimeEvent(
+                            type=EventType.PROCESSING,
+                            content={"message": "Processing your request..."},
+                        ).model_dump()
+                    )
+
+                    # Run the agent with the query in a separate task
+                    task = asyncio.create_task(
+                        run_agent_async(websocket, user_input, resume, files)
+                    )
+                    active_tasks[websocket] = task
+
+                elif msg_type == "enhance_prompt":
+                    # Process a request to enhance a prompt using an LLM
+                    user_input = content.get("text", "")
+                    files = content.get("files", [])
+                    # Initialize LLM client
+                    client = get_client(
+                        "anthropic-direct",
+                        model_name=DEFAULT_MODEL,
+                        use_caching=False,
+                        project_id=global_args.project_id,
+                        region=global_args.region,
+                        thinking_tokens=0, # Don't need thinking tokens for this
+                    )
+                    # Call the enhance_prompt function from the module
+                    success, message, enhanced_prompt = await enhance_user_prompt(
+                        client=client,
+                        user_input=user_input,
+                        files=files,
+                    )
+
+                    if success and enhanced_prompt:
+                        # Send the enhanced prompt back to the client
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.PROMPT_GENERATED,
+                                content={
+                                    "result": enhanced_prompt,
+                                    "original_request": user_input,
+                                },
+                            ).model_dump()
+                        )
+                    else:
+                        # Send error message
+                        await websocket.send_json(
+                            RealtimeEvent(
+                                type=EventType.ERROR,
+                                content={"message": message},
                             ).model_dump()
                         )
 
@@ -264,7 +413,9 @@ async def run_agent_async(
             RealtimeEvent(type=EventType.USER_MESSAGE, content={"text": user_input})
         )
         # Run the agent with the query
-        await anyio.to_thread.run_sync(agent.run_agent, user_input, files, resume)
+        await anyio.to_thread.run_sync(
+            agent.run_agent, user_input, files, resume, abandon_on_cancel=True
+        )
 
     except Exception as e:
         logger.error(f"Error running agent: {str(e)}")
@@ -310,6 +461,7 @@ def cleanup_connection(websocket: WebSocket):
 
 
 def create_agent_for_connection(
+    client: LLMClient,
     session_id: uuid.UUID,
     workspace_manager: WorkspaceManager,
     websocket: WebSocket,
@@ -343,15 +495,6 @@ def create_agent_for_connection(
         f"Created new session {session_id} with workspace at {workspace_manager.root}"
     )
 
-    # Initialize LLM client
-    client = get_client(
-        "anthropic-direct",
-        model_name=DEFAULT_MODEL,
-        use_caching=False,
-        project_id=global_args.project_id,
-        region=global_args.region,
-    )
-
     # Initialize token counter
     token_counter = TokenCounter()
 
@@ -381,7 +524,7 @@ def create_agent_for_connection(
         tool_args=tool_args,
     )
     agent = AnthropicFC(
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=SYSTEM_PROMPT_WITH_SEQ_THINKING if tool_args.get("sequential_thinking", False) else SYSTEM_PROMPT,
         client=client,
         tools=tools,
         workspace_manager=workspace_manager,
