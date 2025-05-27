@@ -27,7 +27,7 @@ services:
       dockerfile: docker/nginx/Dockerfile
     image: nginx
     environment:
-      - HOST_IP=${HOST_IP}
+      - PUBLIC_DOMAIN=${PUBLIC_DOMAIN}
     ports:
       - "80:80"
     networks:
@@ -53,10 +53,15 @@ services:
       - ../.env
     environment:
       - PROXY_SERVER_URL=http://proxy_server:8000
-      - PUBLIC_DOMAIN=${HOST_IP}.nip.io
+      - PUBLIC_DOMAIN=${PUBLIC_DOMAIN}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:+/app/google-application-credentials.json}
+      - PROJECT_ID=${PROJECT_ID}
+      - REGION=${REGION}
+      - WORKSPACE_PATH=${WORKSPACE_PATH}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock #ONLY WORK FOR UNIX FOR NOW
       - ${WORKSPACE_PATH:-../workspace}:/app/workspace
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-.dummy-credentials}:/app/google-application-credentials.json
     depends_on:
       - sandbox
     networks:

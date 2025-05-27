@@ -33,8 +33,11 @@ RUN playwright install-deps
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
+COPY docker/backend/run.sh /app/run.sh
+
+RUN chmod +x /app/run.sh
+
 # Expose port for WebSocket server
 EXPOSE 8000
 
-# Command to run the WebSocket server
-CMD ["xvfb-run", "--auto-servernum", "python", "ws_server.py","--use-container-workspace"]
+ENTRYPOINT ["/app/run.sh"]

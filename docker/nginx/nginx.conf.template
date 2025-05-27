@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name ~^(?<subdomain>[^.]+)\.${ESCAPED_HOST_IP}\.nip\.io$;
+    server_name ~^(?<subdomain>[^.]+)\.${ESCAPED_PUBLIC_DOMAIN}$;
 
     location / {
         # Your backend service

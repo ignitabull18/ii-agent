@@ -18,7 +18,7 @@ class WorkspaceManager:
             container_name=self.container_workspace.name,
             config=settings,
             volume_bindings={
-                os.getenv("WORKSPACE_ROOT") + "/" + self.root.name: settings.work_dir
+                os.getenv("WORKSPACE_PATH") + "/" + self.root.name: settings.work_dir
             },
         ).create()
 
