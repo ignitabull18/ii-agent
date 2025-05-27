@@ -117,7 +117,7 @@ const SidebarButton = ({ className, workspaceInfo }: SidebarButtonProps) => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed left-0 top-0 h-full w-[300px] bg-[#1e1f23] border-r border-[#3A3B3F] z-100 overflow-auto"
+              className="fixed left-0 top-0 h-full w-[300px] bg-[#1e1f23] border-[#3A3B3F] z-100 overflow-auto"
             >
               <div className="p-4 border-b border-[#3A3B3F] flex items-center gap-3">
                 <div
