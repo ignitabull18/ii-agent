@@ -13,6 +13,8 @@ services:
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     image: frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -56,13 +58,15 @@ services:
     environment:
       - PROXY_SERVER_URL=http://proxy_server:8000
       - PUBLIC_DOMAIN=${PUBLIC_DOMAIN}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:+/app/google-application-credentials.json}
+      #Path of mounted file
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-application-credentials.json
       - PROJECT_ID=${PROJECT_ID}
       - REGION=${REGION}
       - WORKSPACE_PATH=${WORKSPACE_PATH}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock #ONLY WORK FOR UNIX FOR NOW
       - ${WORKSPACE_PATH:-../workspace}:/app/workspace
+      #If file doesn't exist, use a dummy file
       - ${GOOGLE_APPLICATION_CREDENTIALS:-.dummy-credentials}:/app/google-application-credentials.json
     depends_on:
       - sandbox

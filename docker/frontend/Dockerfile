@@ -2,13 +2,14 @@
 
 FROM node:18-alpine AS base
 
+ARG NEXT_PUBLIC_API_URL
+
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY frontend/package.json frontend/yarn.lock* frontend/package-lock.json* frontend/pnpm-lock.yaml* frontend/.npmrc* ./
-RUN echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" > .env
 
 RUN \
   if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
@@ -23,11 +24,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY frontend/ .
 
-RUN echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" > .env
 RUN \
-  if [ -f yarn.lock ]; then yarn build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
+  if [ -f yarn.lock ]; then NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL yarn build; \
+  elif [ -f package-lock.json ]; then NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL npm run build; \
+  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL pnpm run build; \
   else echo "Lockfile not found." && exit 1; \
   fi
 

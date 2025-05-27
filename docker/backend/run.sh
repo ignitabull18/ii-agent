@@ -1,4 +1,4 @@
-if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+if [ -n "$PROJECT_ID" ] && [ -n "$REGION" ]; then
   echo "Using Vertex Client"
   echo "PROJECT_ID: $PROJECT_ID"
   echo "REGION: $REGION"
