@@ -48,6 +48,7 @@ from ii_agent.llm.base import (
     TextResult,
     LLMMessages,
     ToolFormattedResult,
+    UserContentBlock,
     recursively_remove_invoke_tag,
     ImageBlock,
 )
@@ -117,7 +118,9 @@ class AnthropicDirectClient(LLMClient):
         # Turn GeneralContentBlock into Anthropic message format
         anthropic_messages = []
         for idx, message_list in enumerate(messages):
-            role = "user" if idx % 2 == 0 else "assistant"
+            role = (
+                "user" if isinstance(message_list[0], UserContentBlock) else "assistant"
+            )
             message_content_list = []
             for message in message_list:
                 # Check string type to avoid import issues particularly with reloads.

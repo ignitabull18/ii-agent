@@ -46,8 +46,10 @@ from ii_agent.utils.prompt_generator import enhance_user_prompt
 
 from fastapi.staticfiles import StaticFiles
 
-from ii_agent.llm.context_manager.file_based import FileBasedContextManager
-from ii_agent.llm.context_manager.standard import StandardContextManager
+from ii_agent.llm.context_manager.llm_summarizing import LLMSummarizingContextManager
+from ii_agent.llm.context_manager.amortized_forgetting import (
+    AmortizedForgettingContextManager,
+)
 from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
@@ -500,20 +502,21 @@ def create_agent_for_connection(
     # Initialize token counter
     token_counter = TokenCounter()
 
-    # Create context manager based on argument
-    if global_args.context_manager == "file-based":
-        context_manager = FileBasedContextManager(
-            workspace_manager=workspace_manager,
+    if global_args.context_manager == "llm-summarizing":
+        context_manager = LLMSummarizingContextManager(
+            client=client,
             token_counter=token_counter,
             logger=logger_for_agent_logs,
             token_budget=120_000,
         )
-    else:  # standard
-        context_manager = StandardContextManager(
+    elif global_args.context_manager == "amortized-forgetting":
+        context_manager = AmortizedForgettingContextManager(
             token_counter=token_counter,
             logger=logger_for_agent_logs,
             token_budget=120_000,
         )
+    else:
+        raise ValueError(f"Unknown context manager type: {global_args.context_manager}")
 
     # Initialize agent with websocket
     queue = asyncio.Queue()

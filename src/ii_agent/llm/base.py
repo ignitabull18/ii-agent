@@ -39,6 +39,9 @@ class ToolCall(DataClassJsonMixin):
     tool_name: str
     tool_input: Any
 
+    def __str__(self) -> str:
+        return f"{self.tool_name} with input: {self.tool_input}"
+
 
 @dataclass
 class ToolResult(DataClassJsonMixin):
@@ -57,6 +60,28 @@ class ToolFormattedResult(DataClassJsonMixin):
     tool_name: str
     tool_output: list[dict[str, Any]] | str
 
+    def __str__(self) -> str:
+        if isinstance(self.tool_output, list):
+            parts = []
+            for item in self.tool_output:
+                if isinstance(item, dict):
+                    if item.get("type") == "image":
+                        # Handle image in tool output
+                        source = item.get("source", {})
+                        media_type = source.get("media_type", "image/unknown")
+                        parts.append(f"[Image attached - {media_type}]")
+                    elif item.get("type") == "text":
+                        # Handle text in tool output
+                        parts.append(item.get("text", ""))
+                    else:
+                        # Handle other dict types
+                        parts.append(str(item))
+                else:
+                    parts.append(str(item))
+            return "\n".join(parts)
+        else:
+            return f"Name: {self.tool_name}\nOutput: {self.tool_output}"
+
 
 @dataclass
 class TextPrompt(DataClassJsonMixin):
@@ -70,6 +95,17 @@ class ImageBlock(DataClassJsonMixin):
     type: Literal["image"]
     source: dict[str, Any]
 
+    def __str__(self) -> str:
+        source = self.source
+        media_type = source.get("media_type", "image/unknown")
+        source_type = source.get("type", "unknown")
+
+        if source_type == "base64":
+            return f"[Image attached - {media_type}]"
+        else:
+            # Handle other source types like URLs
+            return f"[Image attached - {media_type}, source: {source_type}]"
+
 
 @dataclass
 class TextResult(DataClassJsonMixin):
@@ -81,7 +117,7 @@ class TextResult(DataClassJsonMixin):
 AssistantContentBlock = (
     TextResult | ToolCall | AnthropicRedactedThinkingBlock | AnthropicThinkingBlock
 )
-UserContentBlock = TextPrompt | ToolFormattedResult
+UserContentBlock = TextPrompt | ToolFormattedResult | ImageBlock
 GeneralContentBlock = UserContentBlock | AssistantContentBlock
 LLMMessages = list[list[GeneralContentBlock]]
 
