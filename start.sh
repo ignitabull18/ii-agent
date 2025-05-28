@@ -3,10 +3,9 @@
 
 # Create workspace directory if it doesn't exist
 if [ ! -d "${PWD}/workspace" ]; then
-    mkdir ${PWD}/workspace
-    echo "Created workspace directory"
+  mkdir ${PWD}/workspace
+  echo "Created workspace directory"
 fi
-
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS
@@ -19,20 +18,15 @@ else
   export HOST_IP="localhost"
 fi
 
+#DEPLOYMENT DOMAIN, CHANGE THIS IF YOU SET UP YOUR OWN DOMAIN AND REVERSE PROXY
 echo "Using HOST_IP: $HOST_IP"
 export PUBLIC_DOMAIN=${HOST_IP}.nip.io
-export NEXT_PUBLIC_API_URL=http://localhost:8000
 
+#BACKEND ENVIRONMENT VARIABLES
 export PROXY_SERVER_PORT=9000
 export FRONTEND_PORT=3000
 export BACKEND_PORT=8000
 export WORKSPACE_PATH=${PWD}/workspace
-
-
-# IF YOU ARE USING VERTEX AI, SET THESE VARIABLES ELSE PUT ANTHROPIC_API_KEY in .env
-export GOOGLE_APPLICATION_CREDENTIALS=
-export PROJECT_ID=
-export REGION=
 
 # Start docker-compose with the HOST_IP variable
 COMPOSE_PROJECT_NAME=agent docker compose -f docker/docker-compose.yaml up "$@"

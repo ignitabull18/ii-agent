@@ -113,13 +113,10 @@ TAVILY_API_KEY=your_tavily_key
 #FIRECRAWL_API_KEY=your_firecrawl_key
 # For Image Search and better search results use SerpAPI
 #SERPAPI_API_KEY=your_serpapi_key 
-
+# Only for non container mode
 STATIC_FILE_BASE_URL=http://localhost:8000/
 
-#If you are using Anthropic client
 ANTHROPIC_API_KEY=
-#If you are using Goolge Vertex (recommended if you have permission extra throughput)
-#GOOGLE_APPLICATION_CREDENTIALS=
 ```
 
 ### Frontend Environment Variables
@@ -132,6 +129,26 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## Installation
 
+### Docker Installation (Recommended)
+
+1. Clone the repository
+2. Create the required .env files in both root and frontend
+3. If you are using Anthropic Client run
+```
+chmod +x start.sh stop.sh
+./start.sh --build
+```
+If you are using Vertex, run with these variables
+```
+GOOGLE_APPLICATION_CREDENTIALS=absolute-path-to-credential \
+PROJECT_ID=project-id \
+REGION=region \
+./start.sh --build
+```
+
+Run `./stop.sh` to tear down the service.
+
+### Manual Installation
 1. Clone the repository
 2. Set up Python environment:
    ```bash
@@ -146,8 +163,6 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
    npm install
    ```
 
-## Usage
-
 ### Command Line Interface
 
 If you want to use anthropic client, set `ANTHROPIC_API_KEY` in `.env` file and run:
@@ -155,8 +170,9 @@ If you want to use anthropic client, set `ANTHROPIC_API_KEY` in `.env` file and 
 python cli.py 
 ```
 
-If you want to use vertex, set `GOOGLE_APPLICATION_CREDENTIALS` in `.env` file and run:
+If you want to use vertex, set `GOOGLE_APPLICATION_CREDENTIALS` and run:
 ```bash
+GOOGLE_APPLICATION_CREDENTIALS=path-to-your-credential
 python cli.py --project-id YOUR_PROJECT_ID --region YOUR_REGION
 ```
 
@@ -173,13 +189,12 @@ Options:
 
 When using Anthropic client:
 ```bash
-export STATIC_FILE_BASE_URL=http://localhost:8000
 python ws_server.py --port 8000
 ```
 
 When using Vertex:
 ```bash
-export STATIC_FILE_BASE_URL=http://localhost:8000
+GOOGLE_APPLICATION_CREDENTIALS=path-to-your-credential \
 python ws_server.py --port 8000 --project-id YOUR_PROJECT_ID --region YOUR_REGION
 ```
 

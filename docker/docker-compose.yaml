@@ -13,13 +13,9 @@ services:
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     image: frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     volumes:
       - ${WORKSPACE_PATH:-../workspace}:/app/workspace
     networks:
