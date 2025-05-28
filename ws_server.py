@@ -51,7 +51,10 @@ from ii_agent.llm.context_manager.standard import StandardContextManager
 from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
-from ii_agent.prompts.system_prompt import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_SEQ_THINKING
+from ii_agent.prompts.system_prompt import (
+    get_system_prompt,
+    get_system_prompt_with_seq_thinking,
+)
 
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
@@ -97,7 +100,7 @@ async def websocket_endpoint(websocket: WebSocket):
     )
     print(f"Workspace manager created: {workspace_manager}")
 
-    try:    
+    try:
         # Initial connection message with session info
         await websocket.send_json(
             RealtimeEvent(
@@ -329,7 +332,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         use_caching=False,
                         project_id=global_args.project_id,
                         region=global_args.region,
-                        thinking_tokens=0, # Don't need thinking tokens for this
+                        thinking_tokens=0,  # Don't need thinking tokens for this
                     )
                     # Call the enhance_prompt function from the module
                     success, message, enhanced_prompt = await enhance_user_prompt(
@@ -523,8 +526,15 @@ def create_agent_for_connection(
         ask_user_permission=global_args.needs_permission,
         tool_args=tool_args,
     )
+    system_prompt = get_system_prompt(global_args.use_container_workspace)
+    system_prompt_with_seq_thinking = get_system_prompt_with_seq_thinking(
+        global_args.use_container_workspace
+    )
+
     agent = AnthropicFC(
-        system_prompt=SYSTEM_PROMPT_WITH_SEQ_THINKING if tool_args.get("sequential_thinking", False) else SYSTEM_PROMPT,
+        system_prompt=system_prompt_with_seq_thinking
+        if tool_args.get("sequential_thinking", False)
+        else system_prompt,
         client=client,
         tools=tools,
         workspace_manager=workspace_manager,

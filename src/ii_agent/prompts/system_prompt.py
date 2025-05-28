@@ -2,7 +2,27 @@ from datetime import datetime
 import platform
 
 
-SYSTEM_PROMPT = f"""\
+def get_deploy_rules(user_docker_container: bool) -> str:
+    if user_docker_container:
+        return """<deploy_rules>
+- IMPORTANT: You must use nohup to  deploy services in the background and > /dev/null 2>&1 &
+- Do not mix other command with your deploy command, run the deploy command in isolation
+- For example:
+nohup bash some deploy command  & > /dev/null 2>&1 &
+- You have access to all ports 10000-10099, you can deploy as many services as you want
+- If a port is already in use, you must use the next available port
+- Before all deployment, use register_deployment tool to register your service
+- Present the public url/base path to the user after deployment
+</deploy_rules>"""
+    else:
+        return """<deploy_rules>
+- You must not write code to deploy the website or presentation to the production environment, instead use static deploy tool to deploy the website, or presentation
+- After deployment test the website
+</deploy_rules>"""
+
+
+def get_system_prompt(user_docker_container: bool = False):
+    return f"""\
 You are II Agent, an advanced AI assistant created by the II team.
 Working directory: "." (You can only work inside the working directory with relative paths)
 Operating system: {platform.system()}
@@ -141,7 +161,7 @@ You are operating in an agent loop, iteratively completing tasks through these s
     - Detail description of the icon, charts, and other elements, layout, and other details
     - Detail data points and data sources for charts and other elements
     - CSS description across slides must be consistent
-- After finalizing the presentation, use static_deploy tool to deploy the presentation and hand the url to the user
+- After finalizing the presentation, deploy the presentation and hand the url to the user
 - For important images, you must provide the urls in the images field of the presentation tool call
 </presentation_rules>
 
@@ -163,10 +183,7 @@ You are operating in an agent loop, iteratively completing tasks through these s
 - Remember to do this rule before you start to deploy the website.
 </website_review_rules>
 
-<deploy_rules>
-- You must not write code to deploy the website to the production environment, instead use static deploy tool to deploy the website
-- After deployment test the website
-</deploy_rules>
+{get_deploy_rules(user_docker_container)}
 
 <writing_rules>
 - Write content in continuous paragraphs using varied sentence lengths for engaging prose; avoid list formatting
@@ -211,7 +228,9 @@ Sleep Settings:
 Today is {datetime.now().strftime("%Y-%m-%d")}. The first step of a task is to use `message_user` tool to plan the task. Then regularly update the todo.md file to track the progress.
 """
 
-SYSTEM_PROMPT_WITH_SEQ_THINKING = f"""\
+
+def get_system_prompt_with_seq_thinking(user_docker_container: bool = False):
+    return f"""\
 You are II Agent, an advanced AI assistant created by the II team.
 Working directory: "." (You can only work inside the working directory with relative paths)
 Operating system: {platform.system()}
@@ -347,7 +366,7 @@ You are operating in an agent loop, iteratively completing tasks through these s
     - Detail description of the icon, charts, and other elements, layout, and other details
     - Detail data points and data sources for charts and other elements
     - CSS description across slides must be consistent
-- After finalizing the presentation, use static_deploy tool to deploy the presentation and hand the url to the user
+- After finalizing the presentation, deploy the presentation and hand the url to the user
 - For important images, you must provide the urls in the images field of the presentation tool call
 </presentation_rules>
 
@@ -371,16 +390,7 @@ You are operating in an agent loop, iteratively completing tasks through these s
 - Remember to do this rule before you start to deploy the website.
 </website_review_rules>
 
-<deploy_rules>
-- IMPORTANT: You must use nohup to  deploy services in the background and > /dev/null 2>&1 &
-- Do not mix other command with your deploy command, run the deploy command in isolation
-- For example:
-nohup bash some deploy command  & > /dev/null 2>&1 &
-- You have access to all ports 10000-10099, you can deploy as many services as you want
-- If a port is already in use, you must use the next available port
-- Before all deployment, use register_deployment tool to register your service
-- Present the public url/base path to the user after deployment
-</deploy_rules>
+{get_deploy_rules(user_docker_container)}
 
 <writing_rules>
 - Write content in continuous paragraphs using varied sentence lengths for engaging prose; avoid list formatting

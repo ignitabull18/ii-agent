@@ -21,7 +21,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from ii_agent.tools import get_system_tools
-from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
+from ii_agent.prompts.system_prompt import get_system_prompt
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.llm import get_client
 from ii_agent.llm.context_manager.file_based import FileBasedContextManager
@@ -133,8 +133,10 @@ async def async_main():
             "browser": True,
         },
     )
+    system_prompt = get_system_prompt(args.use_container_workspace)
+
     agent = AnthropicFC(
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         client=client,
         workspace_manager=workspace_manager,
         tools=tools,
