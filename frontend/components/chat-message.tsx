@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, CircleStop, Pencil } from "lucide-react";
+import { Check, CircleStop, Pencil, Folder } from "lucide-react";
 
 import Action from "@/components/action";
 import Markdown from "@/components/markdown";
@@ -17,24 +17,31 @@ interface ChatMessageProps {
   isCompleted: boolean;
   isStopped: boolean;
   workspaceInfo: string;
+  handleClickAction: (
+    data: ActionStep | undefined,
+    showTabOnly?: boolean
+  ) => void;
   isUploading: boolean;
   isReplayMode: boolean;
   currentQuestion: string;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
-  handleClickAction: (
-    action: ActionStep | undefined,
-    isReplay?: boolean
-  ) => void;
-  setCurrentQuestion: (question: string) => void;
+  setCurrentQuestion: (value: string) => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleQuestionSubmit: (question: string) => void;
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleFileUpload: (
+    e: React.ChangeEvent<HTMLInputElement>,
+    dontAddToUserMessage?: boolean
+  ) => void;
+  handleGoogleDriveAuth: () => Promise<boolean>;
+  isGoogleDriveConnected?: boolean;
   isGeneratingPrompt: boolean;
   handleEnhancePrompt: () => void;
-  handleCancel?: () => void;
-  editingMessage: Message | undefined;
-  setEditingMessage: (message: Message | undefined) => void;
-  handleEditMessage: (newContent: string) => void;
+  handleCancel: () => void;
+  editingMessage?: Message;
+  setEditingMessage: (message?: Message) => void;
+  handleEditMessage: (newQuestion: string) => void;
+  googlePickerApiLoaded: boolean;
+  setIsGoogleDriveConnected: (value: boolean) => void;
 }
 
 const ChatMessage = ({
@@ -58,6 +65,10 @@ const ChatMessage = ({
   editingMessage,
   setEditingMessage,
   handleEditMessage,
+  handleGoogleDriveAuth,
+  isGoogleDriveConnected,
+  googlePickerApiLoaded,
+  setIsGoogleDriveConnected,
 }: ChatMessageProps) => {
   // Helper function to check if a message is the latest user message
   const isLatestUserMessage = (
@@ -83,69 +94,135 @@ const ChatMessage = ({
           <motion.div
             key={message.id}
             className={`mb-4 ${
-              message.role === "user" ? "text-right mb-8" : "text-left"
-            }`}
+              message.role === "user" ? "text-right" : "text-left"
+            } ${message.role && !message.files && "mb-8"}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 * index, duration: 0.3 }}
           >
             {message.files && message.files.length > 0 && (
               <div className="flex flex-col gap-2 mb-2">
-                {message.files.map((fileName, fileIndex) => {
-                  // Check if the file is an image
-                  const isImage =
-                    fileName.match(
-                      /\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i
-                    ) !== null;
+                {(() => {
+                  // First, identify any folders in the files array
+                  const folderFiles = message.files.filter((fileName) =>
+                    fileName.match(/^folder:(.+):(\d+)$/)
+                  );
 
-                  if (
-                    isImage &&
-                    message.fileContents &&
-                    message.fileContents[fileName]
-                  ) {
+                  // Extract folder names for filtering
+                  const folderNames = folderFiles
+                    .map((folderFile) => {
+                      const match = folderFile.match(/^folder:(.+):(\d+)$/);
+                      return match ? match[1] : null;
+                    })
+                    .filter(Boolean) as string[];
+
+                  // Create a list of files to display:
+                  // 1. Include all folder entries
+                  // 2. Only include individual files that are NOT part of any folder
+                  const filesToDisplay = message.files.filter((fileName) => {
+                    // If it's a folder entry, always include it
+                    if (fileName.match(/^folder:(.+):(\d+)$/)) {
+                      return true;
+                    }
+
+                    // For regular files, exclude them if they might be part of a folder
+                    // This is a simple heuristic that checks if the filename contains any folder name
+                    for (const folderName of folderNames) {
+                      // If the file appears to be from a Google Drive folder, exclude it
+                      if (fileName.includes(folderName)) {
+                        return false;
+                      }
+                    }
+
+                    // Include all other files (they're not part of folders)
+                    return true;
+                  });
+
+                  return filesToDisplay.map((fileName, fileIndex) => {
+                    // Check if the file is a folder
+                    const isFolderMatch = fileName.match(/^folder:(.+):(\d+)$/);
+                    if (isFolderMatch) {
+                      const folderName = isFolderMatch[1];
+                      const fileCount = parseInt(isFolderMatch[2], 10);
+
+                      return (
+                        <div
+                          key={`${message.id}-folder-${fileIndex}`}
+                          className="inline-block ml-auto bg-[#35363a] text-white rounded-2xl px-4 py-3 border border-gray-700 shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl">
+                              <Folder className="size-6 text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-base font-medium">
+                                {folderName}
+                              </span>
+                              <span className="text-left text-sm text-gray-500">
+                                {fileCount} {fileCount === 1 ? "file" : "files"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Handle regular files as before
+                    // Check if the file is an image
+                    const isImage =
+                      fileName.match(
+                        /\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i
+                      ) !== null;
+
+                    if (
+                      isImage &&
+                      message.fileContents &&
+                      message.fileContents[fileName]
+                    ) {
+                      return (
+                        <div
+                          key={`${message.id}-file-${fileIndex}`}
+                          className="inline-block ml-auto rounded-3xl overflow-hidden max-w-[320px]"
+                        >
+                          <div className="w-40 h-40 rounded-xl overflow-hidden">
+                            <img
+                              src={message.fileContents[fileName]}
+                              alt={fileName}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // For non-image files, use the existing code
+                    const { IconComponent, bgColor, label } =
+                      getFileIconAndColor(fileName);
+
                     return (
                       <div
                         key={`${message.id}-file-${fileIndex}`}
-                        className="inline-block ml-auto rounded-3xl overflow-hidden max-w-[320px]"
+                        className="inline-block ml-auto bg-[#35363a] text-white rounded-2xl px-4 py-3 border border-gray-700 shadow-sm"
                       >
-                        <div className="w-40 h-40 rounded-xl overflow-hidden">
-                          <img
-                            src={message.fileContents[fileName]}
-                            alt={fileName}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex items-center justify-center w-12 h-12 ${bgColor} rounded-xl`}
+                          >
+                            <IconComponent className="size-6 text-white" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-base font-medium">
+                              {fileName}
+                            </span>
+                            <span className="text-left text-sm text-gray-500">
+                              {label}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
-                  }
-
-                  // For non-image files, use the existing code
-                  const { IconComponent, bgColor, label } =
-                    getFileIconAndColor(fileName);
-
-                  return (
-                    <div
-                      key={`${message.id}-file-${fileIndex}`}
-                      className="inline-block ml-auto bg-[#35363a] text-white rounded-2xl px-4 py-3 border border-gray-700 shadow-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex items-center justify-center w-12 h-12 ${bgColor} rounded-xl`}
-                        >
-                          <IconComponent className="size-6 text-white" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-base font-medium">
-                            {fileName}
-                          </span>
-                          <span className="text-left text-sm text-gray-500">
-                            {label}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                  });
+                })()}
               </div>
             )}
 
@@ -282,11 +359,15 @@ const ChatMessage = ({
           handleKeyDown={handleKeyDown}
           handleSubmit={handleQuestionSubmit}
           handleFileUpload={handleFileUpload}
+          handleGoogleDriveAuth={handleGoogleDriveAuth}
+          isGoogleDriveConnected={isGoogleDriveConnected}
           isUploading={isUploading}
           isGeneratingPrompt={isGeneratingPrompt}
           handleEnhancePrompt={handleEnhancePrompt}
           isLoading={isLoading}
           handleCancel={handleCancel}
+          googlePickerApiLoaded={googlePickerApiLoaded}
+          setIsGoogleDriveConnected={setIsGoogleDriveConnected}
         />
       </motion.div>
     </div>
