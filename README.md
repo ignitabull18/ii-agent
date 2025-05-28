@@ -136,14 +136,14 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 3. If you are using Anthropic Client run
 ```
 chmod +x start.sh stop.sh
-./start.sh --build
+./start.sh
 ```
 If you are using Vertex, run with these variables
 ```
 GOOGLE_APPLICATION_CREDENTIALS=absolute-path-to-credential \
 PROJECT_ID=project-id \
 REGION=region \
-./start.sh --build
+./start.sh
 ```
 
 Run `./stop.sh` to tear down the service.
