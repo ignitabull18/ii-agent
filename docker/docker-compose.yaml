@@ -52,6 +52,7 @@ services:
     env_file: 
       - ../.env
     environment:
+      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
       - PROXY_SERVER_URL=http://proxy_server:8000
       - PUBLIC_DOMAIN=${PUBLIC_DOMAIN}
       #Path of mounted file

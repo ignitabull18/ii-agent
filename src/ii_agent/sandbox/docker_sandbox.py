@@ -85,6 +85,7 @@ class DockerSandbox:
                 working_dir=self.config.work_dir,
                 host_config=host_config,
                 name=self.container_name,
+                labels={"com.docker.compose.project":os.getenv("COMPOSE_PROJECT_NAME")},
                 tty=True,
                 detach=True,
                 stdin_open=True,  # Enable interactive mode
