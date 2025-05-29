@@ -161,6 +161,8 @@ REGION=region \
 ```
 *Note: Due to a bug in the latest docker, if you receive and error, try running with `--force-recreate`. For example `./start.sh --force-recreate `*
 
+After running start.sh, you can check your application at: localhost:3000
+
 Run `./stop.sh` to tear down the service.
 
 ### Manual Installation
