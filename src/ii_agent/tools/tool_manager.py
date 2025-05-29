@@ -7,7 +7,7 @@ from ii_agent.llm.base import LLMClient
 from ii_agent.tools.advanced_tools.image_search_tool import ImageSearchTool
 from ii_agent.tools.base import LLMTool
 from ii_agent.llm.message_history import ToolCallParameters
-from ii_agent.tools.presentation_tool import PresentationTool
+from ii_agent.tools.slide_deck_tool import SlideDeckInitTool
 from ii_agent.tools.web_search_tool import WebSearchTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
 from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
@@ -34,7 +34,7 @@ from ii_agent.tools.browser_tools import (
     BrowserGetSelectOptionsTool,
     BrowserSelectDropdownOptionTool,
 )
-
+from ii_agent.tools.visualizer import DisplayImageTool
 from ii_agent.tools.advanced_tools.audio_tool import (
     AudioTranscribeTool,
     AudioGenerateTool,
@@ -79,11 +79,10 @@ def get_system_tools(
         ),
         bash_tool,
         ListHtmlLinksTool(workspace_manager=workspace_manager),
-        PresentationTool(
-            client=client,
+        SlideDeckInitTool(
             workspace_manager=workspace_manager,
-            message_queue=message_queue,
         ),
+        DisplayImageTool(workspace_manager=workspace_manager),
     ]
     image_search_tool = ImageSearchTool()
     if image_search_tool.is_available():
