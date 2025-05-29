@@ -92,7 +92,7 @@ Despite these challenges, II-Agent demonstrated strong performance on the benchm
 You can view the full traces of some samples here: [GAIA Benchmark Traces](https://ii-agent-gaia.ii.inc/)
 
 ## Requirements
-
+- Docker Compose
 - Python 3.10+
 - Node.js 18+ (for frontend)
 - Google Cloud project with Vertex AI API enabled or Anthropic API key
@@ -100,6 +100,14 @@ You can view the full traces of some samples here: [GAIA Benchmark Traces](https
 ## Environment
 
 You need to set up 2 `.env` files to run both frontend and backend
+
+### Frontend Environment Variables
+
+For the frontend, create a `.env` file in the frontend directory, point to the port of your backend:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
 ### Backend Environment Variables
 
@@ -132,13 +140,6 @@ Image Search Tool  (Optional, good for more beautiful output)
 SERPAPI_API_KEY=your_serpapi_key 
 ```
 
-### Frontend Environment Variables
-
-For the frontend, create a `.env` file in the frontend directory, point to the port of your backend:
-
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
 
 ## Installation
 
