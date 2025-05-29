@@ -99,29 +99,42 @@ You can view the full traces of some samples here: [GAIA Benchmark Traces](https
 
 ## Environment
 
-### Environment Variables
+You need to set up 2 `.env` files to run both frontend and backend
 
-Create a `.env` file in the root directory with the following variables:
+### Backend Environment Variables
+
+For the back end, create a `.env` file in the root directory with the following variables. Here are the required variables needed to run this project:
 
 ```bash
-# Image and Video Generation Tool
+# Anthropic Key for Claude
+ANTHROPIC_API_KEY=
+# Search Provider API Key
+TAVILY_API_KEY=your_tavily_key
+
+STATIC_FILE_BASE_URL=http://localhost:8000/
+```
+
+We also support other search and crawl provider such as FireCrawl and SerpAPI (Optional but yield better performance):
+```bash
+JINA_API_KEY=your_jina_key
+FIRECRAWL_API_KEY=your_firecrawl_key
+SERPAPI_API_KEY=your_serpapi_key 
+```
+
+Enabling Image and Video Generation Tool (Optional, good for more creative output)
+```bash
 OPENAI_API_KEY=your_openai_key
 OPENAI_AZURE_ENDPOINT=your_azure_endpoint
-# Search Provider
-TAVILY_API_KEY=your_tavily_key
-#JINA_API_KEY=your_jina_key
-#FIRECRAWL_API_KEY=your_firecrawl_key
-# For Image Search and better search results use SerpAPI
-#SERPAPI_API_KEY=your_serpapi_key 
-# Only for non container mode
-STATIC_FILE_BASE_URL=http://localhost:8000/
+```
 
-ANTHROPIC_API_KEY=
+Image Search Tool  (Optional, good for more beautiful output)
+```
+SERPAPI_API_KEY=your_serpapi_key 
 ```
 
 ### Frontend Environment Variables
 
-For the frontend, create a `.env` file in the frontend directory:
+For the frontend, create a `.env` file in the frontend directory, point to the port of your backend:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -132,11 +145,11 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ### Docker Installation (Recommended)
 
 1. Clone the repository
-2. Create the required .env files in both root and frontend
+2. Set up the 2 environment files as mentioned in the above step
 3. If you are using Anthropic Client run
 ```
 chmod +x start.sh stop.sh
-./start.sh
+./start.sh 
 ```
 If you are using Vertex, run with these variables
 ```
@@ -145,8 +158,16 @@ PROJECT_ID=project-id \
 REGION=region \
 ./start.sh
 ```
+*Note: Due to a bug in the latest docker, if you receive and error, try running with `--force-recreate`. For example `./start.sh --force-recreate `*
 
 Run `./stop.sh` to tear down the service.
+
+### Docker with Sandbox Installation (Experimental)
+Each Agent session will have access to a seperate Sandbox. We are still experimenting with this mode. To test, run:
+```
+COMPOSE_PROFILE=sandbox \
+./start.sh
+```
 
 ### Manual Installation
 1. Clone the repository
