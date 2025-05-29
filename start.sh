@@ -1,6 +1,14 @@
 #!/bin/bash
 # Detect OS type and set HOST_IP appropriately
 
+if [ "$COMPOSE_PROFILE" = "sandbox" ]; then
+  export USE_DOCKER_SANDBOX=true
+else
+  export COMPOSE_PROFILE=local
+fi
+
+echo "Using Profile " $COMPOSE_PROFILE
+
 # Create workspace directory if it doesn't exist
 if [ ! -d "${PWD}/workspace" ]; then
   mkdir ${PWD}/workspace
@@ -29,4 +37,4 @@ export BACKEND_PORT=8000
 export WORKSPACE_PATH=${PWD}/workspace
 
 # Start docker-compose with the HOST_IP variable
-COMPOSE_PROJECT_NAME=agent docker compose -f docker/docker-compose.yaml up "$@"
+COMPOSE_PROJECT_NAME=agent docker compose -f docker/docker-compose.yaml --profile $COMPOSE_PROFILE up "$@"

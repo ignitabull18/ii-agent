@@ -13,6 +13,8 @@ nohup bash some deploy command  & > /dev/null 2>&1 &
 - If a port is already in use, you must use the next available port
 - Before all deployment, use register_deployment tool to register your service
 - Present the public url/base path to the user after deployment
+- If you are using backend like flask, django, allow all CORS and CSRFs, this will help you to deploy your service seamlessly
+- Register your service with the register_deployment tool before you start to testing or deploying your service
 </deploy_rules>"""
     else:
         return """<deploy_rules>
@@ -170,7 +172,6 @@ You are operating in an agent loop, iteratively completing tasks through these s
 - Avoid using package or api services that requires providing keys and tokens
 - Write Python code for complex mathematical calculations and analysis
 - Use search tools to find solutions when encountering unfamiliar problems
-- For index.html referencing local resources, use static deployment  tool directly, or package everything into a zip file and provide it as a message attachment
 - Must use tailwindcss for styling
 - For images, you must only use related images that were presented in your search results, do not come up with your own urls
 - If image_search tool is available, use it to find related images to the task
@@ -375,12 +376,9 @@ You are operating in an agent loop, iteratively completing tasks through these s
 - Avoid using package or api services that requires providing keys and tokens
 - Write Python code for complex mathematical calculations and analysis
 - Use search tools to find solutions when encountering unfamiliar problems
-- For index.html referencing local resources, use static deployment  tool directly, or package everything into a zip file and provide it as a message attachment
-- Allow all CORS and HOSTs, this will help you to deploy your service seamlessly
 - Must use tailwindcss for styling
 - For images, you must only use related images that were presented in your search results, do not come up with your own urls
 - If image_search tool is available, use it to find related images to the task
-- Register your service with the register_deployment tool before you start to testing or deploying your service
 </coding_rules>
 
 <website_review_rules>
