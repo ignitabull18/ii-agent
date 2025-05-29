@@ -18,7 +18,6 @@ interface ChatMessageProps {
   isStopped: boolean;
   workspaceInfo: string;
   isUploading: boolean;
-  isUseDeepResearch: boolean;
   isReplayMode: boolean;
   currentQuestion: string;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
@@ -45,7 +44,6 @@ const ChatMessage = ({
   isStopped,
   workspaceInfo,
   isUploading,
-  isUseDeepResearch,
   currentQuestion,
   messagesEndRef,
   isReplayMode,
@@ -285,7 +283,6 @@ const ChatMessage = ({
           handleSubmit={handleQuestionSubmit}
           handleFileUpload={handleFileUpload}
           isUploading={isUploading}
-          isUseDeepResearch={isUseDeepResearch}
           isGeneratingPrompt={isGeneratingPrompt}
           handleEnhancePrompt={handleEnhancePrompt}
           isLoading={isLoading}

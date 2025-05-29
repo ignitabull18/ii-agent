@@ -4,6 +4,13 @@ export enum TAB {
   TERMINAL = "terminal",
 }
 
+export const AVAILABLE_MODELS = [
+  "claude-3-7-sonnet@20250219",
+  "claude-sonnet-4@20250514",
+  "claude-opus-4@20250514",
+  // "gemini-2.5-pro-preview-05-06",
+];
+
 export type Source = {
   title: string;
   url: string;
@@ -119,4 +126,12 @@ export interface IEvent {
   };
   timestamp: string;
   workspace_dir: string;
+}
+
+export interface ToolSettings {
+  deep_research: boolean;
+  pdf: boolean;
+  media_generation: boolean;
+  audio_generation: boolean;
+  browser: boolean;
 }

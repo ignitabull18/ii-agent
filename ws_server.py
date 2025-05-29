@@ -53,7 +53,7 @@ from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
 from ii_agent.prompts.system_prompt import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_SEQ_THINKING
 
-MAX_OUTPUT_TOKENS_PER_TURN = 32768
+MAX_OUTPUT_TOKENS_PER_TURN = 32000
 MAX_TURNS = 200
 
 
@@ -119,10 +119,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 content = message.get("content", {})
 
                 if msg_type == "init_agent":
+                    model_name = content.get("model_name", DEFAULT_MODEL)
                     # Initialize LLM client
                     client = get_client(
                         "anthropic-direct",
-                        model_name=DEFAULT_MODEL,
+                        model_name=model_name,
                         use_caching=False,
                         project_id=global_args.project_id,
                         region=global_args.region,
@@ -320,12 +321,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 elif msg_type == "enhance_prompt":
                     # Process a request to enhance a prompt using an LLM
+                    model_name = content.get("model_name", DEFAULT_MODEL)
                     user_input = content.get("text", "")
                     files = content.get("files", [])
                     # Initialize LLM client
                     client = get_client(
                         "anthropic-direct",
-                        model_name=DEFAULT_MODEL,
+                        model_name=model_name,
                         use_caching=False,
                         project_id=global_args.project_id,
                         region=global_args.region,

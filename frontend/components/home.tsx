@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import {
   ActionStep,
   AgentEvent,
+  AVAILABLE_MODELS,
   IEvent,
   Message,
   TAB,
@@ -62,7 +63,6 @@ export default function Home() {
   const [workspaceInfo, setWorkspaceInfo] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const [isUseDeepResearch, setIsUseDeepResearch] = useState(false);
   const [deviceId, setDeviceId] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -72,6 +72,14 @@ export default function Home() {
   const [browserUrl, setBrowserUrl] = useState("");
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [editingMessage, setEditingMessage] = useState<Message>();
+  const [toolSettings, setToolSettings] = useState({
+    deep_research: false,
+    pdf: true,
+    media_generation: true,
+    audio_generation: true,
+    browser: true,
+  });
+  const [selectedModel, setSelectedModel] = useState<string>();
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
 
@@ -171,6 +179,16 @@ export default function Home() {
     setDeviceId(existingDeviceId);
   }, []);
 
+  // Add this useEffect to load the selected model from cookies
+  useEffect(() => {
+    const savedModel = Cookies.get("selected_model");
+    if (savedModel && AVAILABLE_MODELS.includes(savedModel)) {
+      setSelectedModel(savedModel);
+    } else {
+      setSelectedModel(AVAILABLE_MODELS[0]);
+    }
+  }, []);
+
   const handleEnhancePrompt = () => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       toast.error("WebSocket connection is not open. Please try again.");
@@ -181,6 +199,7 @@ export default function Home() {
       JSON.stringify({
         type: "enhance_prompt",
         content: {
+          model_name: selectedModel,
           text: currentQuestion,
           files: uploadedFiles?.map((file) => `.${file}`),
         },
@@ -298,13 +317,8 @@ export default function Home() {
         JSON.stringify({
           type: "init_agent",
           content: {
-            tool_args: {
-              deep_research: isUseDeepResearch,
-              pdf: true,
-              media_generation: true,
-              audio_generation: true,
-              browser: true,
-            },
+            model_name: selectedModel,
+            tool_args: toolSettings,
           },
         })
       );
@@ -932,11 +946,13 @@ export default function Home() {
                 handleSubmit={handleQuestionSubmit}
                 handleFileUpload={handleFileUpload}
                 isUploading={isUploading}
-                isUseDeepResearch={isUseDeepResearch}
-                setIsUseDeepResearch={setIsUseDeepResearch}
                 isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
                 isGeneratingPrompt={isGeneratingPrompt}
                 handleEnhancePrompt={handleEnhancePrompt}
+                toolSettings={toolSettings}
+                setToolSettings={setToolSettings}
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
               />
             ) : (
               <motion.div
@@ -960,7 +976,6 @@ export default function Home() {
                   workspaceInfo={workspaceInfo}
                   handleClickAction={handleClickAction}
                   isUploading={isUploading}
-                  isUseDeepResearch={isUseDeepResearch}
                   isReplayMode={isReplayMode}
                   currentQuestion={currentQuestion}
                   messagesEndRef={messagesEndRef}
