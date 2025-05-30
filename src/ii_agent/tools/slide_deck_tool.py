@@ -81,3 +81,60 @@ class SlideDeckInitTool(LLMTool):
                 f"Error initializing slide deck",
                 auxiliary_data={"success": False, "error": str(e)},
             )
+
+
+SLIDE_IFRAME_TEMPLATE = """\
+        <section>
+            <iframe src="{slide_path}" scrolling="auto" style="width: 100%; height: 100%;"></iframe>
+        </section>"""
+
+class SlideDeckCompleteTool(LLMTool):
+    name = "slide_deck_complete"
+
+    description = "This tool finalizes a presentation by combining multiple individual slide files into a complete reveal.js presentation. It takes an ordered list of slide file paths and embeds them as iframes into the main index.html file, creating a cohesive slideshow that can be viewed in a web browser. The slides will be displayed in the exact order specified in the slide_paths parameter."
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "slide_paths": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "The ordered paths of the slides to be combined",
+            },
+        },
+        "required": ["slide_paths"],
+    }
+
+    def __init__(self, workspace_manager: WorkspaceManager) -> None:
+        super().__init__()
+        self.workspace_manager = workspace_manager
+
+    def run_impl(
+        self,
+        tool_input: dict[str, Any],
+        message_history: Optional[MessageHistory] = None,
+    ) -> ToolImplOutput:
+        slide_paths = tool_input["slide_paths"]
+        slide_iframes = [SLIDE_IFRAME_TEMPLATE.format(slide_path=slide_path) for slide_path in slide_paths]
+        try:
+            index_path = f"{self.workspace_manager.root}/presentation/reveal.js/index.html"
+            with open(index_path, "r") as file:
+                index_content = file.read()
+        except Exception as e:
+            return ToolImplOutput(
+                f"Error reading `index.html`: {str(e)}",
+                f"Error reading `index.html`",
+                auxiliary_data={"success": False, "error": str(e)},
+            )
+
+        slide_iframes_str = "\n".join(slide_iframes)
+        index_content = index_content.replace("<!--PLACEHOLDER SLIDES REPLACE THIS-->", slide_iframes_str)
+        with open(index_path, "w") as file:
+            file.write(index_content)
+
+        message = f"Successfully combined slides with order {slide_paths} into `presentation/reveal.js/index.html`. If the order is not correct, you can use the `slide_deck_complete` tool again to correct the order. The final presentation is now available in `presentation/reveal.js/index.html`."
+
+        return ToolImplOutput(
+            message,
+            message,
+            auxiliary_data={"success": True, "slide_paths": slide_paths},
+        )
