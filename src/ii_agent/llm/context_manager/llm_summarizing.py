@@ -163,6 +163,7 @@ CURRENT_STATE: Last flip: Heads, Haiku count: 15/20
             model_response, _ = self.client.generate(
                 messages=summary_messages,
                 max_tokens=4000,
+                thinking_tokens=0,
             )
 
             summary = ""
