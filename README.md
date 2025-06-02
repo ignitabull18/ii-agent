@@ -22,11 +22,13 @@ https://github.com/user-attachments/assets/d0eb7440-a6e2-4276-865c-a1055181bb33
 
 ## Overview
 
-II Agent is built around providing an agentic interface to Anthropic Claude models. It offers:
+II Agent is built around providing an agentic interface to leading language models. It offers:
 
 - A CLI interface for direct command-line interaction
 - A WebSocket server that powers a modern React-based frontend
-- Integration with Google Cloud's Vertex AI for API access to Anthropic models
+- Integration with multiple LLM providers:
+  - Anthropic Claude models (direct API or via Google Cloud Vertex AI)
+  - Google Gemini models (direct API or via Google Cloud Vertex AI)
 
 ## Core Capabilities
 
@@ -95,7 +97,10 @@ You can view the full traces of some samples here: [GAIA Benchmark Traces](https
 - Docker Compose
 - Python 3.10+
 - Node.js 18+ (for frontend)
-- Google Cloud project with Vertex AI API enabled or Anthropic API key
+- At least one of the following:
+  - Anthropic API key, or
+  - Google Gemini API key, or  
+  - Google Cloud project with Vertex AI API enabled
 
 ## Environment
 
@@ -114,8 +119,12 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 For the back end, create a `.env` file in the root directory with the following variables. Here are the required variables needed to run this project:
 
 ```bash
-# Anthropic Key for Claude
-ANTHROPIC_API_KEY=
+# Required API Keys - Choose one based on your LLM provider:
+# Option 1: For Claude models via Anthropic
+ANTHROPIC_API_KEY=your_anthropic_key
+
+# Option 2: For Gemini models via Google
+GEMINI_API_KEY=your_gemini_key
 # Search Provider API Key
 TAVILY_API_KEY=your_tavily_key
 
@@ -236,7 +245,7 @@ npm run dev
 
 ## Conclusion
 
-The II-Agent framework, architected around the reasoning capabilities of large language models like Claude 3.7 Sonnet, presents a comprehensive and robust methodology for building versatile AI agents. Through its synergistic combination of a powerful LLM, a rich set of execution capabilities, an explicit mechanism for planning and reflection, and intelligent context management strategies, II-Agent is well-equipped to address a wide spectrum of complex, multi-step tasks. Its open-source nature and extensible design provide a strong foundation for continued research and development in the rapidly evolving field of agentic AI.
+The II-Agent framework, architected around the reasoning capabilities of large language models like Claude 4.0 Sonnet or Gemini 2.5 Pro, presents a comprehensive and robust methodology for building versatile AI agents. Through its synergistic combination of a powerful LLM, a rich set of execution capabilities, an explicit mechanism for planning and reflection, and intelligent context management strategies, II-Agent is well-equipped to address a wide spectrum of complex, multi-step tasks. Its open-source nature and extensible design provide a strong foundation for continued research and development in the rapidly evolving field of agentic AI.
 
 ## Acknowledgement
 
