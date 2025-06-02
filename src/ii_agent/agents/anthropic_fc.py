@@ -91,8 +91,7 @@ try breaking down the task into smaller steps. After call this tool to update or
         self.max_turns = max_turns
 
         self.interrupted = False
-        self.history = MessageHistory()
-        self.context_manager = context_manager
+        self.history = MessageHistory(context_manager)
         self.session_id = session_id
 
         # Initialize database manager
@@ -201,6 +200,7 @@ try breaking down the task into smaller steps. After call this tool to update or
 
         remaining_turns = self.max_turns
         while remaining_turns > 0:
+            self.history.truncate()
             remaining_turns -= 1
 
             delimiter = "-" * 45 + " NEW TURN " + "-" * 45
@@ -216,23 +216,13 @@ try breaking down the task into smaller steps. After call this tool to update or
                     tool_output=AGENT_INTERRUPT_MESSAGE,
                     tool_result_message=AGENT_INTERRUPT_MESSAGE,
                 )
-            current_messages = self.history.get_messages_for_llm()
-            current_tok_count = self.context_manager.count_tokens(current_messages)
+
             self.logger_for_agent_logs.info(
-                f"(Current token count: {current_tok_count})\n"
+                f"(Current token count: {self.history.count_tokens()})\n"
             )
-
-            truncated_messages_for_llm = (
-                self.context_manager.apply_truncation_if_needed(current_messages)
-            )
-
-            # NOTE:
-            # If truncation happened, the `history` object itself was modified.
-            # We need to update the message list in the `history` object to use the truncated version.
-            self.history.set_message_list(truncated_messages_for_llm)
 
             model_response, _ = self.client.generate(
-                messages=truncated_messages_for_llm,
+                messages=self.history.get_messages_for_llm(),
                 max_tokens=self.max_output_tokens,
                 tools=all_tool_params,
                 system_prompt=self.system_prompt,
@@ -339,9 +329,7 @@ try breaking down the task into smaller steps. After call this tool to update or
             A tuple of (result, message).
         """
         self.tool_manager.reset()
-        if resume:
-            assert self.history.is_next_turn_user()
-        else:
+        if not resume:
             self.history.clear()
             self.interrupted = False
 

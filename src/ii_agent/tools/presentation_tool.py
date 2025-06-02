@@ -1,5 +1,6 @@
 import asyncio
 from ii_agent.core.event import EventType, RealtimeEvent
+from ii_agent.llm.context_manager.base import ContextManager
 from ii_agent.tools.advanced_tools.image_search_tool import ImageSearchTool
 from ii_agent.tools.base import LLMTool
 from ii_agent.utils import WorkspaceManager
@@ -174,6 +175,7 @@ action = init
         client,
         workspace_manager: WorkspaceManager,
         message_queue: asyncio.Queue,
+        context_manager: ContextManager,
         ask_user_permission: bool = False,
     ):
         super().__init__()
@@ -188,7 +190,7 @@ action = init
         image_search_tool = ImageSearchTool()
         if image_search_tool.is_available():
             self.tools.append(image_search_tool)
-        self.history = MessageHistory()
+        self.history = MessageHistory(context_manager=context_manager)
         self.tool_params = [tool.get_tool_param() for tool in self.tools]
         self.max_turns = 200
 
@@ -239,6 +241,7 @@ action = init
 
         remaining_turns = self.max_turns
         while remaining_turns > 0:
+            self.history.truncate()
             remaining_turns -= 1
 
             delimiter = "-" * 45 + "PRESENTATION AGENT" + "-" * 45

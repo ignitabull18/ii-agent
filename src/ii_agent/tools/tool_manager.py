@@ -4,10 +4,14 @@ import logging
 from copy import deepcopy
 from typing import Optional, List, Dict, Any
 from ii_agent.llm.base import LLMClient
+from ii_agent.llm.context_manager.llm_summarizing import LLMSummarizingContextManager
+from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.tools.advanced_tools.image_search_tool import ImageSearchTool
 from ii_agent.tools.base import LLMTool
 from ii_agent.llm.message_history import ToolCallParameters
-from ii_agent.tools.slide_deck_tool import SlideDeckInitTool
+from ii_agent.tools.memory.compactify_memory import CompactifyMemoryTool
+from ii_agent.tools.memory.simple_memory import SimpleMemoryTool
+from ii_agent.tools.slide_deck_tool import SlideDeckInitTool, SlideDeckCompleteTool
 from ii_agent.tools.web_search_tool import WebSearchTool
 from ii_agent.tools.visit_webpage_tool import VisitWebpageTool
 from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
@@ -69,6 +73,14 @@ def get_system_tools(
             ask_user_permission=ask_user_permission, cwd=workspace_manager.root
         )
 
+    logger = logging.getLogger("presentation_context_manager")
+    context_manager = LLMSummarizingContextManager(
+        client=client,
+        token_counter=TokenCounter(),
+        logger=logger,
+        token_budget=120_000,
+    )
+
     tools = [
         MessageTool(),
         WebSearchTool(),
@@ -80,6 +92,9 @@ def get_system_tools(
         bash_tool,
         ListHtmlLinksTool(workspace_manager=workspace_manager),
         SlideDeckInitTool(
+            workspace_manager=workspace_manager,
+        ),
+        SlideDeckCompleteTool(
             workspace_manager=workspace_manager,
         ),
         DisplayImageTool(workspace_manager=workspace_manager),
@@ -115,6 +130,8 @@ def get_system_tools(
                     AudioGenerateTool(workspace_manager=workspace_manager),
                 ]
             )
+            
+        # Browser tools
         if tool_args.get("browser", False):
             browser = Browser()
             tools.extend(
@@ -134,7 +151,14 @@ def get_system_tools(
                     BrowserSelectDropdownOptionTool(browser=browser),
                 ]
             )
-        # Browser tools
+
+        memory_tool = tool_args.get("memory_tool")
+        if memory_tool == "compactify-memory":
+            tools.append(CompactifyMemoryTool(context_manager=context_manager))
+        elif memory_tool == "none":
+            pass
+        elif memory_tool == "simple":
+            tools.append(SimpleMemoryTool())
 
     return tools
 
@@ -192,7 +216,7 @@ class AgentToolManager:
         tool_input = tool_params.tool_input
         self.logger_for_agent_logs.info(f"Running tool: {tool_name}")
         self.logger_for_agent_logs.info(f"Tool input: {tool_input}")
-        result = llm_tool.run(tool_input, deepcopy(history))
+        result = llm_tool.run(tool_input, history)
 
         tool_input_str = "\n".join([f" - {k}: {v}" for k, v in tool_input.items()])
 

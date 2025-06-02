@@ -63,9 +63,6 @@ class LLMTool(ABC):
                 if that's not desired. The dialog messages should not contain
                 pending tool calls. They should end where it's the user's turn.
         """
-        if message_history:
-            assert message_history.is_next_turn_user()
-
         try:
             self._validate_tool_input(tool_input)
             result = self.run_impl(tool_input, message_history)

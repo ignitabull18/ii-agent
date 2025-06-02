@@ -52,7 +52,7 @@ from ii_agent.tools.visualizer import DisplayImageTool
 from ii_agent.tools.web_search_tool import WebSearchTool
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
-from ii_agent.llm.context_manager.standard import StandardContextManager
+from ii_agent.llm.context_manager.llm_summarizing import LLMSummarizingContextManager
 from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
 from utils import parse_common_args
@@ -421,7 +421,8 @@ def main():
 
     # Initialize token counter and context manager
     token_counter = TokenCounter()
-    context_manager = StandardContextManager(
+    context_manager = LLMSummarizingContextManager(
+        client=client,
         token_counter=token_counter,
         logger=logger,
         token_budget=120_000,

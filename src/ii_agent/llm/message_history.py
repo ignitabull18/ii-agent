@@ -11,14 +11,94 @@ from ii_agent.llm.base import (
     ToolFormattedResult,
     ImageBlock,
 )
+from ii_agent.llm.context_manager.base import ContextManager
 
 
 class MessageHistory:
     """Stores the sequence of messages in a dialog."""
 
-    def __init__(self):
+    def __init__(self, context_manager: ContextManager):
+        self._context_manager = context_manager
         self._message_lists: list[list[GeneralContentBlock]] = []
-        self._last_user_prompt_index: int | None = None  # Track the last user prompt index
+        self._last_user_prompt_index: int | None = (
+            None  # Track the last user prompt index
+        )
+
+    @classmethod
+    def _ensure_tool_call_integrity(
+        cls, message_turns: list[list[GeneralContentBlock]]
+    ) -> list[list[GeneralContentBlock]]:
+        """
+         Ensures that ToolCall blocks have matching ToolFormattedResult blocks and vice-versa.
+        Removes any unmatched tool calls or results.
+        """
+        # First pass: collect all tool call IDs
+        assistant_turn_tool_calls: dict[int, list[str]] = {}
+        all_present_tool_call_ids_from_assistants = set()
+
+        for idx, turn in enumerate(message_turns):
+            ids_in_turn = [
+                block.tool_call_id
+                for block in turn
+                if isinstance(block, ToolCall) and block.tool_call_id is not None
+            ]
+            if ids_in_turn:
+                assistant_turn_tool_calls[idx] = ids_in_turn
+                all_present_tool_call_ids_from_assistants.update(ids_in_turn)
+
+        # Second pass: collect all tool result IDs
+        all_present_tool_result_ids = set()
+        for turn in message_turns:
+            for block in turn:
+                if (
+                    isinstance(block, ToolFormattedResult)
+                    and block.tool_call_id is not None
+                ):
+                    all_present_tool_result_ids.add(block.tool_call_id)
+
+        # Get valid tool interaction IDs (those that have both call and result)
+        valid_tool_interaction_ids = (
+            all_present_tool_call_ids_from_assistants.intersection(
+                all_present_tool_result_ids
+            )
+        )
+
+        # Third pass: filter turns based on valid tool interactions
+        cleaned_turns = []
+        for idx, turn in enumerate(message_turns):
+            new_turn_blocks = []
+            is_assistant_turn_with_calls = idx in assistant_turn_tool_calls
+            contains_tool_results = any(
+                isinstance(block, ToolFormattedResult) for block in turn
+            )
+
+            if is_assistant_turn_with_calls:
+                has_non_tool_call_content = False
+                has_valid_tool_call = False
+                for block in turn:
+                    if isinstance(block, ToolCall):
+                        if block.tool_call_id in valid_tool_interaction_ids:
+                            new_turn_blocks.append(block)
+                            has_valid_tool_call = True
+                    else:  # e.g., TextResult
+                        new_turn_blocks.append(block)
+                        has_non_tool_call_content = True
+
+                if has_non_tool_call_content or has_valid_tool_call:
+                    cleaned_turns.append(new_turn_blocks)
+
+            elif contains_tool_results:
+                for block in turn:
+                    if isinstance(block, ToolFormattedResult):
+                        if block.tool_call_id in valid_tool_interaction_ids:
+                            new_turn_blocks.append(block)
+                if new_turn_blocks:
+                    cleaned_turns.append(new_turn_blocks)
+
+            else:  # User prompt, system message, or assistant reply without any tool calls
+                cleaned_turns.append(turn)
+
+        return cleaned_turns
 
     def add_user_prompt(
         self, prompt: str, image_blocks: list[dict[str, Any]] | None = None
@@ -36,8 +116,6 @@ class MessageHistory:
 
     def add_user_turn(self, messages: list[GeneralContentBlock]):
         """Adds a user turn (prompts and/or tool results)."""
-        if not self.is_next_turn_user():
-            raise ValueError("Cannot add user turn, expected assistant turn next.")
         # Ensure all messages are valid user-side types
         for msg in messages:
             if not isinstance(msg, (TextPrompt, ToolFormattedResult, ImageBlock)):
@@ -46,9 +124,17 @@ class MessageHistory:
 
     def add_assistant_turn(self, messages: list[AssistantContentBlock]):
         """Adds an assistant turn (text response and/or tool calls)."""
-        if not self.is_next_turn_assistant():
-            raise ValueError("Cannot add assistant turn, expected user turn next.")
-        self._message_lists.append(cast(list[GeneralContentBlock], messages))
+        messages_with_one_tool_call = []
+        has_tool_call = False
+        for message in messages:
+            if isinstance(message, ToolCall) and not has_tool_call:
+                has_tool_call = True
+                messages_with_one_tool_call.append(message)
+            elif isinstance(message, ToolCall) and has_tool_call:
+                print("WARNING: Multiple tool calls in one turn are not supported, selecting the first tool call")
+            else:
+                messages_with_one_tool_call.append(message)
+        self._message_lists.append(cast(list[GeneralContentBlock], messages_with_one_tool_call))
 
     def get_messages_for_llm(self) -> LLMMessages:  # TODO: change name to get_messages
         """Returns messages formatted for the LLM client."""
@@ -57,9 +143,6 @@ class MessageHistory:
 
     def get_pending_tool_calls(self) -> list[ToolCallParameters]:
         """Returns tool calls from the last assistant turn, if any."""
-        if self.is_next_turn_assistant() or not self._message_lists:
-            return []  # No pending calls if it's user turn or history is empty
-
         last_turn = self._message_lists[-1]
         tool_calls = []
         for message in last_turn:
@@ -81,9 +164,6 @@ class MessageHistory:
         self, parameters: list[ToolCallParameters], results: list[str]
     ):
         """Add the result of a tool call to the dialog."""
-        assert self.is_next_turn_user(), (
-            "Cannot add tool call results, expected user turn next."
-        )
         self._message_lists.append(
             [
                 ToolFormattedResult(
@@ -97,7 +177,7 @@ class MessageHistory:
 
     def get_last_assistant_text_response(self) -> Optional[str]:  # TODO:: remove get
         """Returns the text part of the last assistant response, if any."""
-        if self.is_next_turn_assistant() or not self._message_lists:
+        if not self._message_lists:
             return None  # No assistant response yet or not the last turn
 
         last_turn = self._message_lists[-1]
@@ -119,18 +199,9 @@ class MessageHistory:
             return
 
         # Keep messages up to and excluding the last user prompt
-        self._message_lists = self._message_lists[:self._last_user_prompt_index]
+        self._message_lists = self._message_lists[: self._last_user_prompt_index]
         # Reset the last user prompt index since we've cleared after it
         self._last_user_prompt_index = None
-
-    def is_next_turn_user(self) -> bool:
-        """Checks if the next turn should be from the user."""
-        # User turn is 0, 2, 4... (even indices in a 0-indexed list)
-        return len(self._message_lists) % 2 == 0
-
-    def is_next_turn_assistant(self) -> bool:
-        """Checks if the next turn should be from the assistant."""
-        return not self.is_next_turn_user()
 
     def __len__(self) -> int:
         """Returns the number of turns."""
@@ -171,5 +242,17 @@ class MessageHistory:
             return f"[Error serializing summary: {e}]"
 
     def set_message_list(self, message_list: list[list[GeneralContentBlock]]):
-        """Sets the message list."""
-        self._message_lists = message_list
+        """Sets the message list and ensures tool call integrity."""
+        self._message_lists = MessageHistory._ensure_tool_call_integrity(message_list)
+
+    def count_tokens(self):
+        """Counts the tokens in the message list."""
+        return self._context_manager.count_tokens(self.get_messages_for_llm())
+
+    def truncate(self) -> None:
+        """Remove oldest messages when context window limit is exceeded."""
+        truncated_messages_for_llm = self._context_manager.apply_truncation_if_needed(
+            self.get_messages_for_llm()
+        )
+
+        self.set_message_list(truncated_messages_for_llm)

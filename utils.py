@@ -57,9 +57,16 @@ def parse_common_args(parser: ArgumentParser):
     parser.add_argument(
         "--context-manager",
         type=str,
-        default="file-based",
-        choices=["file-based", "standard"],
-        help="Type of context manager to use (file-based or standard)",
+        default="llm-summarizing",
+        choices=["llm-summarizing", "amortized-forgetting"],
+        help="Type of context manager to use (llm-summarizing, or amortized-forgetting)",
+    )
+    parser.add_argument(
+        "--memory-tool",
+        type=str,
+        default="compactify-memory",
+        choices=["compactify-memory", "none", "simple"],
+        help="Type of memory tool to use"
     )
     return parser
 

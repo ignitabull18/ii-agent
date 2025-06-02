@@ -25,8 +25,10 @@ from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
-from ii_agent.llm.context_manager.file_based import FileBasedContextManager
-from ii_agent.llm.context_manager.standard import StandardContextManager
+from ii_agent.llm.context_manager.llm_summarizing import LLMSummarizingContextManager
+from ii_agent.llm.context_manager.amortized_forgetting import (
+    AmortizedForgettingContextManager,
+)
 from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
 
@@ -109,19 +111,21 @@ async def async_main():
     token_counter = TokenCounter()
 
     # Create context manager based on argument
-    if args.context_manager == "file-based":
-        context_manager = FileBasedContextManager(
-            workspace_manager=workspace_manager,
+    if args.context_manager == "llm-summarizing":
+        context_manager = LLMSummarizingContextManager(
+            client=client,
             token_counter=token_counter,
             logger=logger_for_agent_logs,
             token_budget=120_000,
         )
-    else:  # standard
-        context_manager = StandardContextManager(
+    elif args.context_manager == "amortized-forgetting":
+        context_manager = AmortizedForgettingContextManager(
             token_counter=token_counter,
             logger=logger_for_agent_logs,
             token_budget=120_000,
         )
+    else:
+        raise ValueError(f"Unknown context manager type: {args.context_manager}")
 
     queue = asyncio.Queue()
     tools = get_system_tools(
@@ -136,6 +140,7 @@ async def async_main():
             "media_generation": False,
             "audio_generation": False,
             "browser": True,
+            "memory_tool": args.memory_tool,
         },
     )
     agent = AnthropicFC(
