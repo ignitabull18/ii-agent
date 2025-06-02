@@ -17,6 +17,16 @@ from ii_agent.llm.base import (
     ImageBlock,
 )
 
+def generate_tool_call_id() -> str:
+    """Generate a unique ID for a tool call.
+    
+    Returns:
+        A unique string ID combining timestamp and random number.
+    """
+    timestamp = int(time.time() * 1000)  # Current time in milliseconds
+    random_num = random.randint(1000, 9999)  # Random 4-digit number
+    return f"call_{timestamp}_{random_num}"
+
 
 class GeminiDirectClient(LLMClient):
     """Use Gemini models via first party API."""
@@ -26,13 +36,13 @@ class GeminiDirectClient(LLMClient):
 
         if project_id and region:
             self.client = genai.Client(vertexai=True, project=project_id, location=region)
-            print(f"====== Using Vertex AI API with project_id: {project_id} and region: {region} ======")
+            print(f"====== Using Gemini through Vertex AI API with project_id: {project_id} and region: {region} ======")
         else:
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 raise ValueError("GEMINI_API_KEY is not set")
             self.client = genai.Client(api_key=api_key)
-            print(f"====== Using Gemini API ======")
+            print(f"====== Using Gemini directly ======")
             
         self.max_retries = max_retries
 
@@ -149,7 +159,7 @@ class GeminiDirectClient(LLMClient):
         if response.function_calls:
             for fn_call in response.function_calls:
                 response_message_content = ToolCall(
-                    tool_call_id=fn_call.id,
+                    tool_call_id=fn_call.id if fn_call.id else generate_tool_call_id(),
                     tool_name=fn_call.name,
                     tool_input=fn_call.args,
                 )
