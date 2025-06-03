@@ -26,16 +26,13 @@ services:
       # Application Configuration
       - STATIC_FILE_BASE_URL=${STATIC_FILE_BASE_URL:-https://backend.ii-agent.ignitabull.org/}
       
-      # Google Cloud (if using Vertex AI)
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-application-credentials.json
+      # Google Cloud (if using Vertex AI) - Not needed for Anthropic
       - PROJECT_ID=${PROJECT_ID}
       - REGION=${REGION}
       
       - WORKSPACE_PATH=/app/workspace
     volumes:
       - workspace:/app/workspace
-      # If file doesn't exist, use a dummy file
-      - ${GOOGLE_APPLICATION_CREDENTIALS:-./docker/.dummy-credentials.json}:/app/google-application-credentials.json:ro
 
 volumes:
   workspace:
